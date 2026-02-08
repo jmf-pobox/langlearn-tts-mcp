@@ -1,0 +1,116 @@
+[project]
+name = "langlearn-polly"
+version = "0.1.0"
+description = "AWS Polly TTS MCP server and CLI for language learning"
+readme = "README.md"
+authors = [{ name = "JF", email = "jmf@pobox.com" }]
+requires-python = ">=3.13"
+license = "MIT"
+dependencies = [
+    "boto3>=1.35.0",
+    "boto3-stubs[polly]>=1.35.0",
+    "botocore-stubs>=1.35.0",
+    "click>=8.1.0",
+    "mcp>=1.0.0",
+    "pydub>=0.25.0",
+    "audioop-lts>=0.2.1",
+]
+
+[project.scripts]
+langlearn-polly = "langlearn_polly.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.14.0",
+    "pyright>=1.1.390",
+    "ruff>=0.9.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.14,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "TID", # flake8-tidy-imports
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "TC001",  # Move import into TYPE_CHECKING
+    "TC003",  # Move standard lib import into TYPE_CHECKING
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["langlearn_polly"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "pydub.*"
+ignore_missing_imports = true
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "warning"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (requires AWS credentials)",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+show_missing = true
+precision = 2

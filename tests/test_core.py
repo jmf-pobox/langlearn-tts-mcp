@@ -1,0 +1,328 @@
+"""Tests for langlearn_polly.core."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+
+from langlearn_polly.core import PollyClient, stitch_audio
+from langlearn_polly.types import (
+    VOICES,
+    MergeStrategy,
+    SynthesisRequest,
+)
+
+
+class TestPollyClientSynthesize:
+    def test_synthesize_creates_file(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        request = SynthesisRequest(text="hello", voice=voice, rate=75)
+        out = tmp_output_dir / "test.mp3"
+
+        result = polly_client.synthesize(request, out)
+
+        assert result.file_path == out
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_synthesize_uses_ssml(
+        self,
+        mock_boto_client: MagicMock,
+        polly_client: PollyClient,
+        tmp_output_dir: Path,
+    ) -> None:
+        voice = VOICES["hans"]
+        request = SynthesisRequest(text="Hallo", voice=voice, rate=60)
+        out = tmp_output_dir / "hallo.mp3"
+
+        polly_client.synthesize(request, out)
+
+        call_kwargs = mock_boto_client.synthesize_speech.call_args.kwargs
+        assert call_kwargs["TextType"] == "ssml"
+        assert '<prosody rate="60%">' in call_kwargs["Text"]
+        assert "Hallo" in call_kwargs["Text"]
+
+    def test_synthesize_passes_voice_params(
+        self,
+        mock_boto_client: MagicMock,
+        polly_client: PollyClient,
+        tmp_output_dir: Path,
+    ) -> None:
+        voice = VOICES["tatyana"]
+        request = SynthesisRequest(text="Привет", voice=voice)
+        out = tmp_output_dir / "privet.mp3"
+
+        polly_client.synthesize(request, out)
+
+        call_kwargs = mock_boto_client.synthesize_speech.call_args.kwargs
+        assert call_kwargs["VoiceId"] == "Tatyana"
+        assert call_kwargs["LanguageCode"] == "ru-RU"
+        assert call_kwargs["Engine"] == "standard"
+
+    def test_synthesize_creates_parent_dirs(
+        self, polly_client: PollyClient, tmp_path: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        request = SynthesisRequest(text="hello", voice=voice)
+        out = tmp_path / "nested" / "dir" / "test.mp3"
+
+        result = polly_client.synthesize(request, out)
+
+        assert result.file_path.exists()
+
+    def test_synthesize_result_metadata(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["seoyeon"]
+        request = SynthesisRequest(text="안녕하세요", voice=voice)
+        out = tmp_output_dir / "korean.mp3"
+
+        result = polly_client.synthesize(request, out)
+
+        assert result.text == "안녕하세요"
+        assert result.voice_name == "Seoyeon"
+
+
+class TestPollyClientSynthesizeBatch:
+    def test_empty_batch_returns_empty(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        results = polly_client.synthesize_batch([], tmp_output_dir)
+        assert results == []
+
+    def test_batch_separate_creates_files(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        requests = [
+            SynthesisRequest(text="hello", voice=voice),
+            SynthesisRequest(text="world", voice=voice),
+        ]
+
+        results = polly_client.synthesize_batch(
+            requests, tmp_output_dir, MergeStrategy.ONE_FILE_PER_INPUT
+        )
+
+        assert len(results) == 2
+        for r in results:
+            assert r.file_path.exists()
+
+    def test_batch_separate_distinct_files(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        requests = [
+            SynthesisRequest(text="hello", voice=voice),
+            SynthesisRequest(text="world", voice=voice),
+        ]
+
+        results = polly_client.synthesize_batch(
+            requests, tmp_output_dir, MergeStrategy.ONE_FILE_PER_INPUT
+        )
+
+        paths = {r.file_path for r in results}
+        assert len(paths) == 2
+
+    def test_batch_merged_creates_single_file(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        requests = [
+            SynthesisRequest(text="hello", voice=voice),
+            SynthesisRequest(text="world", voice=voice),
+        ]
+
+        results = polly_client.synthesize_batch(
+            requests, tmp_output_dir, MergeStrategy.ONE_FILE_PER_BATCH, 300
+        )
+
+        assert len(results) == 1
+        assert results[0].file_path.exists()
+
+    def test_batch_merged_text_contains_all(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        voice = VOICES["joanna"]
+        requests = [
+            SynthesisRequest(text="hello", voice=voice),
+            SynthesisRequest(text="world", voice=voice),
+        ]
+
+        results = polly_client.synthesize_batch(
+            requests, tmp_output_dir, MergeStrategy.ONE_FILE_PER_BATCH
+        )
+
+        assert "hello" in results[0].text
+        assert "world" in results[0].text
+
+
+class TestPollyClientSynthesizePair:
+    def test_pair_creates_file(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        v_en = VOICES["joanna"]
+        v_de = VOICES["hans"]
+        req1 = SynthesisRequest(text="strong", voice=v_en)
+        req2 = SynthesisRequest(text="stark", voice=v_de)
+        out = tmp_output_dir / "pair.mp3"
+
+        result = polly_client.synthesize_pair("strong", req1, "stark", req2, out, 500)
+
+        assert result.file_path == out
+        assert result.file_path.exists()
+
+    def test_pair_result_contains_both_texts(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        v_en = VOICES["joanna"]
+        v_de = VOICES["hans"]
+        req1 = SynthesisRequest(text="strong", voice=v_en)
+        req2 = SynthesisRequest(text="stark", voice=v_de)
+        out = tmp_output_dir / "pair.mp3"
+
+        result = polly_client.synthesize_pair("strong", req1, "stark", req2, out)
+
+        assert "strong" in result.text
+        assert "stark" in result.text
+
+    def test_pair_calls_polly_twice(
+        self,
+        mock_boto_client: MagicMock,
+        polly_client: PollyClient,
+        tmp_output_dir: Path,
+    ) -> None:
+        v_en = VOICES["joanna"]
+        v_de = VOICES["hans"]
+        req1 = SynthesisRequest(text="strong", voice=v_en)
+        req2 = SynthesisRequest(text="stark", voice=v_de)
+        out = tmp_output_dir / "pair.mp3"
+
+        polly_client.synthesize_pair("strong", req1, "stark", req2, out)
+
+        assert mock_boto_client.synthesize_speech.call_count == 2
+
+
+class TestPollyClientSynthesizePairBatch:
+    def test_empty_batch_returns_empty(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        results = polly_client.synthesize_pair_batch([], tmp_output_dir)
+        assert results == []
+
+    def test_pair_batch_separate(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        v_en = VOICES["joanna"]
+        v_de = VOICES["hans"]
+        pairs = [
+            (
+                SynthesisRequest(text="strong", voice=v_en),
+                SynthesisRequest(text="stark", voice=v_de),
+            ),
+            (
+                SynthesisRequest(text="house", voice=v_en),
+                SynthesisRequest(text="Haus", voice=v_de),
+            ),
+        ]
+
+        results = polly_client.synthesize_pair_batch(
+            pairs, tmp_output_dir, MergeStrategy.ONE_FILE_PER_INPUT, 500
+        )
+
+        assert len(results) == 2
+        for r in results:
+            assert r.file_path.exists()
+
+    def test_pair_batch_merged(
+        self, polly_client: PollyClient, tmp_output_dir: Path
+    ) -> None:
+        v_en = VOICES["joanna"]
+        v_de = VOICES["hans"]
+        pairs = [
+            (
+                SynthesisRequest(text="strong", voice=v_en),
+                SynthesisRequest(text="stark", voice=v_de),
+            ),
+            (
+                SynthesisRequest(text="house", voice=v_en),
+                SynthesisRequest(text="Haus", voice=v_de),
+            ),
+        ]
+
+        results = polly_client.synthesize_pair_batch(
+            pairs, tmp_output_dir, MergeStrategy.ONE_FILE_PER_BATCH, 500
+        )
+
+        assert len(results) == 1
+        assert results[0].file_path.exists()
+
+
+class TestStitchAudio:
+    def _write_fake_mp3(self, path: Path) -> None:
+        """Write minimal valid MP3 bytes using ffmpeg."""
+        import subprocess
+
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "anullsrc=r=22050:cl=mono",
+                "-t",
+                "0.1",
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "32k",
+                str(path),
+            ],
+            capture_output=True,
+            check=True,
+        )
+
+    def test_stitch_two_segments(self, tmp_path: Path) -> None:
+        seg1 = tmp_path / "a.mp3"
+        seg2 = tmp_path / "b.mp3"
+        self._write_fake_mp3(seg1)
+        self._write_fake_mp3(seg2)
+        out = tmp_path / "stitched.mp3"
+
+        stitch_audio([seg1, seg2], out, pause_ms=200)
+
+        assert out.exists()
+        assert out.stat().st_size > seg1.stat().st_size
+
+    def test_stitch_single_segment(self, tmp_path: Path) -> None:
+        seg = tmp_path / "a.mp3"
+        self._write_fake_mp3(seg)
+        out = tmp_path / "stitched.mp3"
+
+        stitch_audio([seg], out, pause_ms=0)
+
+        assert out.exists()
+
+    def test_stitch_empty_raises(self, tmp_path: Path) -> None:
+        out = tmp_path / "stitched.mp3"
+        with pytest.raises(ValueError, match="must not be empty"):
+            stitch_audio([], out)
+
+    def test_stitch_missing_file_raises(self, tmp_path: Path) -> None:
+        out = tmp_path / "stitched.mp3"
+        missing = tmp_path / "nonexistent.mp3"
+        with pytest.raises(FileNotFoundError, match=r"nonexistent\.mp3"):
+            stitch_audio([missing], out)
+
+    def test_stitch_creates_parent_dirs(self, tmp_path: Path) -> None:
+        seg = tmp_path / "a.mp3"
+        self._write_fake_mp3(seg)
+        out = tmp_path / "nested" / "dir" / "stitched.mp3"
+
+        stitch_audio([seg], out)
+
+        assert out.exists()

@@ -1,0 +1,307 @@
+"""Core synthesis and audio stitching logic using AWS Polly."""
+
+from __future__ import annotations
+
+import logging
+import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
+
+import boto3
+from pydub import AudioSegment
+
+from langlearn_polly.types import (
+    MergeStrategy,
+    SynthesisRequest,
+    SynthesisResult,
+    generate_filename,
+)
+
+if TYPE_CHECKING:
+    from mypy_boto3_polly.client import PollyClient as PollyClientType
+
+logger = logging.getLogger(__name__)
+
+
+class PollyClient:
+    """Wraps the boto3 Polly client for text-to-speech synthesis.
+
+    Accepts an optional pre-configured boto3 Polly client for
+    dependency injection in tests.
+    """
+
+    def __init__(self, boto_client: PollyClientType | None = None) -> None:
+        if TYPE_CHECKING:
+            self._client: PollyClientType
+        if boto_client is not None:
+            self._client = boto_client
+        else:
+            self._client = cast("PollyClientType", boto3.client("polly"))  # type: ignore[redundant-cast]  # pyright: ignore[reportUnknownMemberType]
+
+    def synthesize(
+        self, request: SynthesisRequest, output_path: Path
+    ) -> SynthesisResult:
+        """Synthesize text to an MP3 file using AWS Polly.
+
+        Args:
+            request: The synthesis parameters.
+            output_path: Where to write the MP3 file.
+
+        Returns:
+            A SynthesisResult with the file path and metadata.
+
+        Raises:
+            botocore.exceptions.ClientError: On AWS API errors.
+            botocore.exceptions.NoCredentialsError: If AWS credentials
+                are missing.
+            OSError: If the file cannot be written.
+        """
+        ssml_text = (
+            f'<speak><prosody rate="{request.rate}%">{request.text}</prosody></speak>'
+        )
+        logger.debug(
+            "Synthesizing: voice=%s, text=%r",
+            request.voice.voice_id,
+            request.text,
+        )
+
+        response = self._client.synthesize_speech(
+            Text=ssml_text,
+            TextType="ssml",
+            VoiceId=request.voice.voice_id,
+            LanguageCode=request.voice.language_code,
+            OutputFormat="mp3",
+            Engine=request.voice.engine,
+            SampleRate="22050",
+        )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "wb") as f:
+            f.write(response["AudioStream"].read())
+
+        logger.info("Wrote %s", output_path)
+        return SynthesisResult(
+            file_path=output_path,
+            text=request.text,
+            voice_name=request.voice.voice_id,
+        )
+
+    def synthesize_batch(
+        self,
+        requests: list[SynthesisRequest],
+        output_dir: Path,
+        merge_strategy: MergeStrategy = MergeStrategy.ONE_FILE_PER_INPUT,
+        pause_ms: int = 500,
+    ) -> list[SynthesisResult]:
+        """Synthesize multiple texts, optionally merging into one file.
+
+        Args:
+            requests: List of synthesis requests.
+            output_dir: Directory for output files.
+            merge_strategy: Whether to produce separate files or one
+                merged file.
+            pause_ms: Pause duration in milliseconds between segments
+                when merging into a single file.
+
+        Returns:
+            List of SynthesisResult. When merge_strategy is
+            ONE_FILE_PER_BATCH, the list contains a single result.
+        """
+        if not requests:
+            return []
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if merge_strategy == MergeStrategy.ONE_FILE_PER_INPUT:
+            return self._synthesize_batch_separate(requests, output_dir)
+        return self._synthesize_batch_merged(requests, output_dir, pause_ms)
+
+    def synthesize_pair(
+        self,
+        text_1: str,
+        voice_1: SynthesisRequest,
+        text_2: str,
+        voice_2: SynthesisRequest,
+        output_path: Path,
+        pause_ms: int = 500,
+    ) -> SynthesisResult:
+        """Synthesize two texts and stitch them with a pause.
+
+        Produces a single MP3: [text_1 audio] [pause] [text_2 audio].
+
+        Args:
+            text_1: First text (typically English).
+            voice_1: Synthesis request for the first text.
+            text_2: Second text (typically L2).
+            voice_2: Synthesis request for the second text.
+            output_path: Where to write the stitched MP3.
+            pause_ms: Pause between the two segments in milliseconds.
+
+        Returns:
+            SynthesisResult for the stitched file.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            path_1 = tmp_dir / "part1.mp3"
+            path_2 = tmp_dir / "part2.mp3"
+
+            self.synthesize(voice_1, path_1)
+            self.synthesize(voice_2, path_2)
+
+            stitch_audio([path_1, path_2], output_path, pause_ms)
+
+        return SynthesisResult(
+            file_path=output_path,
+            text=f"{text_1} | {text_2}",
+            voice_name=f"{voice_1.voice.voice_id}+{voice_2.voice.voice_id}",
+        )
+
+    def synthesize_pair_batch(
+        self,
+        pairs: list[tuple[SynthesisRequest, SynthesisRequest]],
+        output_dir: Path,
+        merge_strategy: MergeStrategy = MergeStrategy.ONE_FILE_PER_INPUT,
+        pause_ms: int = 500,
+    ) -> list[SynthesisResult]:
+        """Synthesize multiple pairs, optionally merging into one file.
+
+        Args:
+            pairs: List of (request_1, request_2) tuples.
+            output_dir: Directory for output files.
+            merge_strategy: Whether to produce separate files or one
+                merged file.
+            pause_ms: Pause between pair segments in milliseconds.
+
+        Returns:
+            List of SynthesisResult.
+        """
+        if not pairs:
+            return []
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if merge_strategy == MergeStrategy.ONE_FILE_PER_INPUT:
+            return self._pair_batch_separate(pairs, output_dir, pause_ms)
+        return self._pair_batch_merged(pairs, output_dir, pause_ms)
+
+    # -- Private helpers --------------------------------------------------
+
+    def _synthesize_batch_separate(
+        self,
+        requests: list[SynthesisRequest],
+        output_dir: Path,
+    ) -> list[SynthesisResult]:
+        results: list[SynthesisResult] = []
+        for req in requests:
+            filename = generate_filename(req.text)
+            path = output_dir / filename
+            results.append(self.synthesize(req, path))
+        return results
+
+    def _synthesize_batch_merged(
+        self,
+        requests: list[SynthesisRequest],
+        output_dir: Path,
+        pause_ms: int,
+    ) -> list[SynthesisResult]:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            tmp_paths: list[Path] = []
+            for i, req in enumerate(requests):
+                path = tmp_dir / f"seg_{i:04d}.mp3"
+                self.synthesize(req, path)
+                tmp_paths.append(path)
+
+            combined_text = " | ".join(r.text for r in requests)
+            out_path = output_dir / generate_filename(combined_text, prefix="batch_")
+            stitch_audio(tmp_paths, out_path, pause_ms)
+
+        return [
+            SynthesisResult(
+                file_path=out_path,
+                text=combined_text,
+                voice_name=requests[0].voice.voice_id,
+            )
+        ]
+
+    def _pair_batch_separate(
+        self,
+        pairs: list[tuple[SynthesisRequest, SynthesisRequest]],
+        output_dir: Path,
+        pause_ms: int,
+    ) -> list[SynthesisResult]:
+        results: list[SynthesisResult] = []
+        for req_1, req_2 in pairs:
+            combined = f"{req_1.text}_{req_2.text}"
+            out_path = output_dir / generate_filename(combined, prefix="pair_")
+            result = self.synthesize_pair(
+                req_1.text, req_1, req_2.text, req_2, out_path, pause_ms
+            )
+            results.append(result)
+        return results
+
+    def _pair_batch_merged(
+        self,
+        pairs: list[tuple[SynthesisRequest, SynthesisRequest]],
+        output_dir: Path,
+        pause_ms: int,
+    ) -> list[SynthesisResult]:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            pair_paths: list[Path] = []
+
+            for i, (req_1, req_2) in enumerate(pairs):
+                pair_path = tmp_dir / f"pair_{i:04d}.mp3"
+                self.synthesize_pair(
+                    req_1.text,
+                    req_1,
+                    req_2.text,
+                    req_2,
+                    pair_path,
+                    pause_ms,
+                )
+                pair_paths.append(pair_path)
+
+            all_texts = " | ".join(f"{r1.text}-{r2.text}" for r1, r2 in pairs)
+            out_path = output_dir / generate_filename(all_texts, prefix="pairs_")
+            stitch_audio(pair_paths, out_path, pause_ms)
+
+        return [
+            SynthesisResult(
+                file_path=out_path,
+                text=all_texts,
+                voice_name="mixed",
+            )
+        ]
+
+
+def stitch_audio(segments: list[Path], output_path: Path, pause_ms: int = 500) -> None:
+    """Concatenate MP3 files with silence between each segment.
+
+    Args:
+        segments: Ordered list of MP3 file paths to concatenate.
+        output_path: Where to write the stitched MP3.
+        pause_ms: Duration of silence between segments in milliseconds.
+
+    Raises:
+        FileNotFoundError: If any segment file does not exist.
+        ValueError: If segments list is empty.
+    """
+    if not segments:
+        raise ValueError("segments must not be empty")
+
+    silence: Any = AudioSegment.silent(duration=pause_ms)
+    combined: Any = None
+
+    for path in segments:
+        if not path.exists():
+            raise FileNotFoundError(f"Segment not found: {path}")
+        segment: Any = AudioSegment.from_mp3(str(path))  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
+        combined = segment if combined is None else combined + silence + segment  # pyright: ignore[reportUnknownVariableType]
+
+    if combined is None:
+        raise ValueError("No audio segments to stitch")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    combined.export(str(output_path), format="mp3")  # pyright: ignore[reportUnknownMemberType]
+    logger.info("Stitched %d segments → %s", len(segments), output_path)
