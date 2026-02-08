@@ -11,7 +11,13 @@ import pytest
 from pydub import AudioSegment
 
 from langlearn_polly.core import PollyClient
-from langlearn_polly.types import VOICES
+from langlearn_polly.types import VoiceConfig
+
+# Test voice configs — constructed directly, no API call needed.
+JOANNA = VoiceConfig(voice_id="Joanna", language_code="en-US", engine="neural")
+HANS = VoiceConfig(voice_id="Hans", language_code="de-DE", engine="standard")
+TATYANA = VoiceConfig(voice_id="Tatyana", language_code="ru-RU", engine="standard")
+SEOYEON = VoiceConfig(voice_id="Seoyeon", language_code="ko-KR", engine="neural")
 
 
 @pytest.fixture
@@ -26,7 +32,7 @@ def _generate_valid_mp3_bytes() -> bytes:
     """Generate minimal valid MP3 bytes using pydub."""
     silence = AudioSegment.silent(duration=50)
     buf = io.BytesIO()
-    silence.export(buf, format="mp3")
+    silence.export(buf, format="mp3")  # pyright: ignore[reportUnknownMemberType]
     return buf.getvalue()
 
 
@@ -37,7 +43,7 @@ _VALID_MP3_BYTES: bytes | None = None
 def _get_valid_mp3_bytes() -> bytes:
     global _VALID_MP3_BYTES
     if _VALID_MP3_BYTES is None:
-        _VALID_MP3_BYTES = _generate_valid_mp3_bytes()
+        _VALID_MP3_BYTES = _generate_valid_mp3_bytes()  # pyright: ignore[reportConstantRedefinition]
     return _VALID_MP3_BYTES
 
 
@@ -56,7 +62,7 @@ def _make_polly_response() -> dict[str, Any]:
 def mock_boto_client() -> MagicMock:
     """Create a mock boto3 Polly client that returns valid MP3 bytes."""
     client = MagicMock()
-    client.synthesize_speech.side_effect = lambda **kwargs: _make_polly_response()
+    client.synthesize_speech.side_effect = lambda **kwargs: _make_polly_response()  # pyright: ignore[reportUnknownLambdaType]
     return client
 
 
@@ -67,10 +73,10 @@ def polly_client(mock_boto_client: MagicMock) -> PollyClient:
 
 
 @pytest.fixture
-def english_voice():
-    return VOICES["joanna"]
+def english_voice() -> VoiceConfig:
+    return JOANNA
 
 
 @pytest.fixture
-def german_voice():
-    return VOICES["hans"]
+def german_voice() -> VoiceConfig:
+    return HANS

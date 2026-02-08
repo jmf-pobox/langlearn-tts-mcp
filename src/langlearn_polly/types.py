@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import boto3
 
 if TYPE_CHECKING:
     from mypy_boto3_polly.literals import (
@@ -14,6 +17,11 @@ if TYPE_CHECKING:
         LanguageCodeType,
         VoiceIdType,
     )
+
+logger = logging.getLogger(__name__)
+
+# Engine preference order: best quality first.
+_ENGINE_PREFERENCE: list[str] = ["neural", "generative", "long-form", "standard"]
 
 
 class MergeStrategy(Enum):
@@ -38,46 +46,70 @@ class VoiceConfig:
     engine: EngineType
 
 
-# Voices keyed by a short human-readable name.
-# Extend this mapping to add support for new languages/voices.
-VOICES: dict[str, VoiceConfig] = {
-    # English (US)
-    "joanna": VoiceConfig(voice_id="Joanna", language_code="en-US", engine="neural"),
-    "matthew": VoiceConfig(voice_id="Matthew", language_code="en-US", engine="neural"),
-    # German
-    "marlene": VoiceConfig(
-        voice_id="Marlene", language_code="de-DE", engine="standard"
-    ),
-    "hans": VoiceConfig(voice_id="Hans", language_code="de-DE", engine="standard"),
-    "vicki": VoiceConfig(voice_id="Vicki", language_code="de-DE", engine="neural"),
-    "daniel": VoiceConfig(voice_id="Daniel", language_code="de-DE", engine="neural"),
-    # Russian
-    "tatyana": VoiceConfig(
-        voice_id="Tatyana", language_code="ru-RU", engine="standard"
-    ),
-    "maxim": VoiceConfig(voice_id="Maxim", language_code="ru-RU", engine="standard"),
-    # Korean
-    "seoyeon": VoiceConfig(voice_id="Seoyeon", language_code="ko-KR", engine="neural"),
-}
+# Cache of resolved voices, keyed by lowercase name.
+# Pre-populated entries act as aliases and are never overwritten.
+VOICES: dict[str, VoiceConfig] = {}
+
+# Whether the full voice list has been fetched from the API.
+_voices_loaded: bool = False
+
+
+def _best_engine(supported: list[str]) -> EngineType:
+    """Pick the best engine from a list of supported engines."""
+    for engine in _ENGINE_PREFERENCE:
+        if engine in supported:
+            return engine  # type: ignore[return-value]
+    return supported[0]  # type: ignore[return-value]
+
+
+def _load_voices_from_api() -> None:
+    """Fetch all voices from the Polly API and populate the cache."""
+    global _voices_loaded
+    if _voices_loaded:
+        return
+
+    client: Any = boto3.client("polly")  # pyright: ignore[reportUnknownMemberType]
+    resp: dict[str, Any] = client.describe_voices()
+
+    for voice in resp["Voices"]:
+        key = voice["Id"].lower()
+        if key not in VOICES:
+            VOICES[key] = VoiceConfig(
+                voice_id=voice["Id"],
+                language_code=voice["LanguageCode"],
+                engine=_best_engine(voice["SupportedEngines"]),
+            )
+
+    _voices_loaded = True
+    logger.debug("Loaded %d voices from Polly API", len(VOICES))
 
 
 def resolve_voice(name: str) -> VoiceConfig:
     """Resolve a voice name to its configuration.
 
+    Checks the local cache first, then queries the Polly API to
+    resolve any valid Polly voice ID.
+
     Args:
-        name: Case-insensitive voice name (e.g. "joanna", "Hans").
+        name: Case-insensitive voice name (e.g. "joanna", "Lucia").
 
     Returns:
         The corresponding VoiceConfig.
 
     Raises:
-        ValueError: If the voice name is not found in VOICES.
+        ValueError: If the voice name is not a valid Polly voice.
     """
     key = name.lower()
-    if key not in VOICES:
-        available = ", ".join(sorted(VOICES))
-        raise ValueError(f"Unknown voice '{name}'. Available: {available}")
-    return VOICES[key]
+    if key in VOICES:
+        return VOICES[key]
+
+    _load_voices_from_api()
+
+    if key in VOICES:
+        return VOICES[key]
+
+    available = ", ".join(sorted(VOICES))
+    raise ValueError(f"Unknown voice '{name}'. Available: {available}")
 
 
 @dataclass(frozen=True)

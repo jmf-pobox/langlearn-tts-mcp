@@ -10,27 +10,14 @@ AWS Polly text-to-speech for language learning. Provides both an MCP server (for
 - **Pair batch** — batch process vocabulary lists as stitched pairs
 - **Auto-play** — MCP tools play audio immediately after synthesis via `afplay`
 - **Configurable speech rate** — default 90% speed for learner-friendly pacing
-
-## Supported Voices
-
-| Voice | Language | Engine |
-|-------|----------|--------|
-| joanna | English (US) | neural |
-| matthew | English (US) | neural |
-| vicki | German | neural |
-| daniel | German | neural |
-| hans | German | standard |
-| marlene | German | standard |
-| tatyana | Russian | standard |
-| maxim | Russian | standard |
-| seoyeon | Korean | neural |
+- **All Polly voices** — any voice from the [AWS Polly voice list](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) works out of the box (93 voices across 41 languages)
 
 ## Prerequisites
 
 - Python 3.13+
-- [uv](https://docs.astral.sh/uv/)
-- [ffmpeg](https://ffmpeg.org/) (for audio stitching)
-- AWS credentials configured (`~/.aws/credentials` or environment variables)
+- [uv](https://docs.astral.sh/uv/) — Python package manager
+- [ffmpeg](https://ffmpeg.org/) — required for audio stitching
+- AWS credentials configured (see [AWS Configuration](#aws-configuration))
 
 ## Installation
 
@@ -38,6 +25,51 @@ AWS Polly text-to-speech for language learning. Provides both an MCP server (for
 git clone https://github.com/jmf-pobox/langlearn-polly-mcp.git
 cd langlearn-polly-mcp
 uv sync
+```
+
+Verify the installation:
+
+```bash
+uv run langlearn-polly --help
+```
+
+### AWS Configuration
+
+The tool requires AWS credentials with `polly:SynthesizeSpeech` and `polly:DescribeVoices` permissions. Configure using any standard AWS method:
+
+**Option A — AWS CLI (recommended):**
+
+```bash
+aws configure
+```
+
+**Option B — Environment variables:**
+
+```bash
+export AWS_ACCESS_KEY_ID=your-key
+export AWS_SECRET_ACCESS_KEY=your-secret
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+**Option C — Credentials file** (`~/.aws/credentials`):
+
+```ini
+[default]
+aws_access_key_id = your-key
+aws_secret_access_key = your-secret
+region = us-east-1
+```
+
+### ffmpeg
+
+Audio stitching (pairs, merged batches) requires ffmpeg:
+
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
 ```
 
 ## Claude Desktop Setup
@@ -48,26 +80,50 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "langlearn-polly": {
-      "command": "/path/to/uv",
+      "command": "/absolute/path/to/uv",
       "args": [
         "run",
         "--directory",
-        "/path/to/langlearn-polly-mcp",
+        "/absolute/path/to/langlearn-polly-mcp",
         "python",
         "-m",
         "langlearn_polly.server"
       ],
       "env": {
-        "POLLY_OUTPUT_DIR": "/path/to/output/directory"
+        "POLLY_OUTPUT_DIR": "/absolute/path/to/output/directory"
       }
     }
   }
 }
 ```
 
-Replace `/path/to/uv` with the absolute path to your `uv` binary (`which uv`). The `POLLY_OUTPUT_DIR` environment variable sets the default output directory; it falls back to `~/polly-audio/` if unset.
+**Important:** Claude Desktop does not inherit your shell PATH. All paths must be absolute. Find your `uv` path with `which uv`.
+
+The `POLLY_OUTPUT_DIR` environment variable sets the default output directory. If unset, files are saved to `~/polly-audio/`.
 
 Restart Claude Desktop after editing the config.
+
+## Voices
+
+Any voice from the [AWS Polly voice list](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) is supported. Voice names are case-insensitive. The tool queries the Polly API on first use and caches the result.
+
+Common voices for language learning:
+
+| Voice | Language | Engine |
+|-------|----------|--------|
+| joanna | English (US) | neural |
+| matthew | English (US) | neural |
+| daniel | German | neural |
+| vicki | German | neural |
+| lucia | Spanish (European) | neural |
+| lupe | Spanish (US) | neural |
+| léa | French | neural |
+| tatyana | Russian | standard |
+| seoyeon | Korean | neural |
+| takumi | Japanese | neural |
+| zhiyu | Chinese (Mandarin) | neural |
+
+The engine (neural, standard, generative, long-form) is selected automatically — neural preferred when available.
 
 ## CLI Usage
 
@@ -75,7 +131,7 @@ Restart Claude Desktop after editing the config.
 # Single synthesis
 langlearn-polly synthesize "Guten Morgen" --voice daniel -o morning.mp3
 
-# Custom speech rate
+# Custom speech rate (percentage, default 90)
 langlearn-polly synthesize "Привет" --voice tatyana --rate 70 -o privet.mp3
 
 # Pair: English + German stitched with a pause
@@ -108,7 +164,7 @@ Each tool accepts `auto_play` (default: true) to play audio immediately after sy
 ## Development
 
 ```bash
-# Install dev dependencies
+# Install with dev dependencies
 uv sync --all-extras
 
 # Run tests
@@ -120,7 +176,7 @@ uv run ruff format src/ tests/
 
 # Type checking
 uv run mypy src/ tests/
-uv run pyright src/
+uv run pyright src/ tests/
 ```
 
 ## License

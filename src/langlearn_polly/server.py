@@ -74,8 +74,8 @@ def synthesize(
 
     Args:
         text: The text to convert to speech.
-        voice: Voice name (joanna, matthew, hans, marlene, vicki,
-            daniel, tatyana, maxim, seoyeon). Defaults to joanna.
+        voice: Any AWS Polly voice name (e.g. joanna, daniel,
+            lucia, takumi). Defaults to joanna.
         rate: Speech rate as percentage (90 = 90% speed, good for
             language learners). Defaults to 90.
         auto_play: Open the file in the default audio player after

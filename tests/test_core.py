@@ -9,17 +9,17 @@ import pytest
 
 from langlearn_polly.core import PollyClient, stitch_audio
 from langlearn_polly.types import (
-    VOICES,
     MergeStrategy,
     SynthesisRequest,
 )
+from tests.conftest import HANS, JOANNA, SEOYEON, TATYANA
 
 
 class TestPollyClientSynthesize:
     def test_synthesize_creates_file(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         request = SynthesisRequest(text="hello", voice=voice, rate=75)
         out = tmp_output_dir / "test.mp3"
 
@@ -35,7 +35,7 @@ class TestPollyClientSynthesize:
         polly_client: PollyClient,
         tmp_output_dir: Path,
     ) -> None:
-        voice = VOICES["hans"]
+        voice = HANS
         request = SynthesisRequest(text="Hallo", voice=voice, rate=60)
         out = tmp_output_dir / "hallo.mp3"
 
@@ -52,7 +52,7 @@ class TestPollyClientSynthesize:
         polly_client: PollyClient,
         tmp_output_dir: Path,
     ) -> None:
-        voice = VOICES["tatyana"]
+        voice = TATYANA
         request = SynthesisRequest(text="Привет", voice=voice)
         out = tmp_output_dir / "privet.mp3"
 
@@ -66,7 +66,7 @@ class TestPollyClientSynthesize:
     def test_synthesize_creates_parent_dirs(
         self, polly_client: PollyClient, tmp_path: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         request = SynthesisRequest(text="hello", voice=voice)
         out = tmp_path / "nested" / "dir" / "test.mp3"
 
@@ -77,7 +77,7 @@ class TestPollyClientSynthesize:
     def test_synthesize_result_metadata(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["seoyeon"]
+        voice = SEOYEON
         request = SynthesisRequest(text="안녕하세요", voice=voice)
         out = tmp_output_dir / "korean.mp3"
 
@@ -97,7 +97,7 @@ class TestPollyClientSynthesizeBatch:
     def test_batch_separate_creates_files(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         requests = [
             SynthesisRequest(text="hello", voice=voice),
             SynthesisRequest(text="world", voice=voice),
@@ -114,7 +114,7 @@ class TestPollyClientSynthesizeBatch:
     def test_batch_separate_distinct_files(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         requests = [
             SynthesisRequest(text="hello", voice=voice),
             SynthesisRequest(text="world", voice=voice),
@@ -130,7 +130,7 @@ class TestPollyClientSynthesizeBatch:
     def test_batch_merged_creates_single_file(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         requests = [
             SynthesisRequest(text="hello", voice=voice),
             SynthesisRequest(text="world", voice=voice),
@@ -146,7 +146,7 @@ class TestPollyClientSynthesizeBatch:
     def test_batch_merged_text_contains_all(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        voice = VOICES["joanna"]
+        voice = JOANNA
         requests = [
             SynthesisRequest(text="hello", voice=voice),
             SynthesisRequest(text="world", voice=voice),
@@ -164,8 +164,8 @@ class TestPollyClientSynthesizePair:
     def test_pair_creates_file(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        v_en = VOICES["joanna"]
-        v_de = VOICES["hans"]
+        v_en = JOANNA
+        v_de = HANS
         req1 = SynthesisRequest(text="strong", voice=v_en)
         req2 = SynthesisRequest(text="stark", voice=v_de)
         out = tmp_output_dir / "pair.mp3"
@@ -178,8 +178,8 @@ class TestPollyClientSynthesizePair:
     def test_pair_result_contains_both_texts(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        v_en = VOICES["joanna"]
-        v_de = VOICES["hans"]
+        v_en = JOANNA
+        v_de = HANS
         req1 = SynthesisRequest(text="strong", voice=v_en)
         req2 = SynthesisRequest(text="stark", voice=v_de)
         out = tmp_output_dir / "pair.mp3"
@@ -195,8 +195,8 @@ class TestPollyClientSynthesizePair:
         polly_client: PollyClient,
         tmp_output_dir: Path,
     ) -> None:
-        v_en = VOICES["joanna"]
-        v_de = VOICES["hans"]
+        v_en = JOANNA
+        v_de = HANS
         req1 = SynthesisRequest(text="strong", voice=v_en)
         req2 = SynthesisRequest(text="stark", voice=v_de)
         out = tmp_output_dir / "pair.mp3"
@@ -216,8 +216,8 @@ class TestPollyClientSynthesizePairBatch:
     def test_pair_batch_separate(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        v_en = VOICES["joanna"]
-        v_de = VOICES["hans"]
+        v_en = JOANNA
+        v_de = HANS
         pairs = [
             (
                 SynthesisRequest(text="strong", voice=v_en),
@@ -240,8 +240,8 @@ class TestPollyClientSynthesizePairBatch:
     def test_pair_batch_merged(
         self, polly_client: PollyClient, tmp_output_dir: Path
     ) -> None:
-        v_en = VOICES["joanna"]
-        v_de = VOICES["hans"]
+        v_en = JOANNA
+        v_de = HANS
         pairs = [
             (
                 SynthesisRequest(text="strong", voice=v_en),
