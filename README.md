@@ -14,48 +14,58 @@ Currently supports **AWS Polly** with **ElevenLabs** and **OpenAI TTS** backends
 - **Configurable speech rate** — default 90% speed for learner-friendly pacing
 - **93 voices, 41 languages** — any voice from the [AWS Polly voice list](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) works out of the box
 
-## Prerequisites
+## Quick Start
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) — Python package manager
-- [ffmpeg](https://ffmpeg.org/) — required for audio stitching
-- AWS credentials configured (see [AWS Configuration](#aws-configuration))
+### 1. Install uv (Python package manager)
 
-## Installation
-
-### From PyPI (recommended)
+If you don't have `uv` yet:
 
 ```bash
-# Using uv
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+uv manages Python versions automatically — you don't need to install Python separately.
+
+### 2. Install langlearn-tts
+
+```bash
 uv tool install langlearn-tts
-
-# Or using pip
-pip install langlearn-tts
 ```
 
-### From source (development)
+This installs the `langlearn-tts` CLI and `langlearn-tts-server` MCP server globally.
+
+### 3. Install ffmpeg
+
+Required for audio stitching (pairs, merged batches). Single synthesis works without it.
 
 ```bash
-git clone https://github.com/jmf-pobox/langlearn-tts-mcp.git
-cd langlearn-tts-mcp
-uv sync
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# Windows
+winget install ffmpeg
 ```
 
-Verify the installation:
+### 4. Configure AWS credentials
 
-```bash
-langlearn-tts --help
-```
-
-### AWS Configuration
-
-The tool requires AWS credentials with `polly:SynthesizeSpeech` and `polly:DescribeVoices` permissions. Configure using any standard AWS method:
+The tool uses AWS Polly, which requires an AWS account with `polly:SynthesizeSpeech` and `polly:DescribeVoices` permissions.
 
 **Option A — AWS CLI (recommended):**
+
+Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), then:
 
 ```bash
 aws configure
 ```
+
+Enter your Access Key ID, Secret Access Key, and region (e.g., `us-east-1`).
 
 **Option B — Environment variables:**
 
@@ -74,16 +84,21 @@ aws_secret_access_key = your-secret
 region = us-east-1
 ```
 
-### ffmpeg
-
-Audio stitching (pairs, merged batches) requires ffmpeg:
+### 5. Verify
 
 ```bash
-# macOS
-brew install ffmpeg
+langlearn-tts doctor
+```
 
-# Ubuntu/Debian
-sudo apt install ffmpeg
+All required checks should show `✓`. Fix any that show `✗` before continuing.
+
+### From source (development)
+
+```bash
+git clone https://github.com/jmf-pobox/langlearn-tts-mcp.git
+cd langlearn-tts-mcp
+uv sync --all-extras
+uv run langlearn-tts --help
 ```
 
 ## Claude Desktop Setup
