@@ -325,9 +325,7 @@ def doctor() -> None:
     failed = 0
     lines: list[str] = []
 
-    def _check(
-        symbol: str, message: str, *, required: bool = True
-    ) -> None:
+    def _check(symbol: str, message: str, *, required: bool = True) -> None:
         nonlocal passed, failed
         lines.append(f"{symbol} {message}")
         if symbol == _PASS:
@@ -479,9 +477,7 @@ def install(output_dir: Path | None, uvx_path: str | None) -> None:
         try:
             data = json.loads(config_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            raise click.ClickException(
-                f"Could not read {config_path}: {e}"
-            ) from e
+            raise click.ClickException(f"Could not read {config_path}: {e}") from e
     else:
         data = {}
 
@@ -498,9 +494,7 @@ def install(output_dir: Path | None, uvx_path: str | None) -> None:
         },
     }
 
-    config_path.write_text(
-        json.dumps(data, indent=2) + "\n", encoding="utf-8"
-    )
+    config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     if overwriting:
         click.echo("Updated existing langlearn-tts entry.")
