@@ -1,5 +1,8 @@
 # langlearn-tts
 
+[![PyPI](https://img.shields.io/pypi/v/langlearn-tts)](https://pypi.org/project/langlearn-tts/)
+[![GitHub](https://img.shields.io/github/v/release/jmf-pobox/langlearn-tts-mcp)](https://github.com/jmf-pobox/langlearn-tts-mcp)
+
 Text-to-speech toolkit for language learning. Provides both an MCP server (for Claude Desktop) and a CLI with identical functionality.
 
 Currently supports **AWS Polly** with **ElevenLabs** and **OpenAI TTS** backends planned. The goal: pick the TTS provider that fits your setup — no AWS account required once alternative backends ship.
