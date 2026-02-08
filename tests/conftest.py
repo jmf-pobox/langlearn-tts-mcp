@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -18,6 +19,35 @@ JOANNA = VoiceConfig(voice_id="Joanna", language_code="en-US", engine="neural")
 HANS = VoiceConfig(voice_id="Hans", language_code="de-DE", engine="standard")
 TATYANA = VoiceConfig(voice_id="Tatyana", language_code="ru-RU", engine="standard")
 SEOYEON = VoiceConfig(voice_id="Seoyeon", language_code="ko-KR", engine="neural")
+
+
+@pytest.fixture(autouse=True)
+def _populate_voice_cache() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+    """Pre-populate the voice cache so resolve_voice() never hits the Polly API.
+
+    Tests that verify resolve_voice's API-calling behavior (test_types.py)
+    explicitly clear VOICES and reset _voices_loaded before their test logic.
+    """
+    import langlearn_tts.types as t
+
+    saved_voices = dict(t.VOICES)
+    saved_loaded = t._voices_loaded  # pyright: ignore[reportPrivateUsage]
+
+    t.VOICES.update(
+        {
+            "joanna": JOANNA,
+            "hans": HANS,
+            "tatyana": TATYANA,
+            "seoyeon": SEOYEON,
+        }
+    )
+    t._voices_loaded = True  # pyright: ignore[reportPrivateUsage]
+
+    yield
+
+    t.VOICES.clear()
+    t.VOICES.update(saved_voices)
+    t._voices_loaded = saved_loaded  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.fixture
