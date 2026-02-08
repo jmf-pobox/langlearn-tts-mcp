@@ -365,7 +365,7 @@ def doctor() -> None:
         import boto3 as _boto3
 
         polly: Any = _boto3.client("polly")  # pyright: ignore[reportUnknownMemberType]
-        polly.describe_voices(MaxResults=1)
+        polly.describe_voices()
         _check(_PASS, "AWS Polly access")
     except Exception:
         _check(_FAIL, "AWS Polly access: denied or unavailable")
