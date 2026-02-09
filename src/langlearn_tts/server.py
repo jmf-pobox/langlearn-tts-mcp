@@ -107,9 +107,8 @@ def synthesize(
             the model interprets them as performance cues. Combine with
             punctuation (ellipsis for pauses, ! for emphasis) for best
             results. Tags only work with ElevenLabs eleven_v3 model.
-        voice: Voice name. Provider-specific (e.g. rachel for ElevenLabs,
-            joanna for Polly, nova for OpenAI). Defaults to provider's
-            default voice.
+        voice: Voice name (provider-specific). Defaults to provider's
+            default voice if not specified.
         rate: Speech rate as percentage (90 = 90% speed, good for
             language learners). Defaults to 90. ElevenLabs ignores rate;
             use audio tags like [rushed] or [drawn out] instead.

@@ -116,9 +116,8 @@ def main(
 @click.argument("text")
 @click.option(
     "--voice",
-    default="joanna",
-    show_default=True,
-    help="Voice name (e.g. joanna, hans, tatyana, seoyeon).",
+    default=None,
+    help="Voice name (provider-specific). Defaults to provider's default.",
 )
 @click.option(
     "--rate",
@@ -139,7 +138,7 @@ def main(
 def synthesize(
     ctx: click.Context,
     text: str,
-    voice: str,
+    voice: str | None,
     rate: int,
     output: Path | None,
     stability: float | None,
@@ -149,6 +148,7 @@ def synthesize(
 ) -> None:
     """Synthesize a single text to an MP3 file."""
     provider = _get_provider(ctx)
+    voice = voice or provider.default_voice
     provider.resolve_voice(voice)
     request = SynthesisRequest(
         text=text,
@@ -171,9 +171,8 @@ def synthesize(
 @main.command("synthesize-batch")
 @click.option(
     "--voice",
-    default="joanna",
-    show_default=True,
-    help="Voice name for all texts.",
+    default=None,
+    help="Voice name for all texts. Defaults to provider's default.",
 )
 @click.option(
     "--rate",
@@ -207,7 +206,7 @@ def synthesize(
 @click.pass_context
 def synthesize_batch(
     ctx: click.Context,
-    voice: str,
+    voice: str | None,
     rate: int,
     output_dir: Path | None,
     merge: bool,
@@ -224,6 +223,7 @@ def synthesize_batch(
     ["hello", "world", "good morning"]
     """
     provider = _get_provider(ctx)
+    voice = voice or provider.default_voice
     provider.resolve_voice(voice)
     raw = json.loads(input_file.read_text(encoding="utf-8"))
 
@@ -265,15 +265,13 @@ def synthesize_batch(
 @click.argument("text2")
 @click.option(
     "--voice1",
-    default="joanna",
-    show_default=True,
-    help="Voice for the first text (typically English).",
+    default=None,
+    help="Voice for first text (typically English). Provider default if omitted.",
 )
 @click.option(
     "--voice2",
-    default="hans",
-    show_default=True,
-    help="Voice for the second text (typically L2).",
+    default=None,
+    help="Voice for the second text (typically L2). Defaults to provider's default.",
 )
 @click.option(
     "--rate",
@@ -302,8 +300,8 @@ def synthesize_pair(
     ctx: click.Context,
     text1: str,
     text2: str,
-    voice1: str,
-    voice2: str,
+    voice1: str | None,
+    voice2: str | None,
     rate: int,
     pause: int,
     output: Path | None,
@@ -317,6 +315,8 @@ def synthesize_pair(
     Creates [TEXT1 audio] [pause] [TEXT2 audio] in a single MP3.
     """
     provider = _get_provider(ctx)
+    voice1 = voice1 or provider.default_voice
+    voice2 = voice2 or provider.default_voice
     provider.resolve_voice(voice1)
     provider.resolve_voice(voice2)
     boost = speaker_boost if speaker_boost else None
@@ -350,15 +350,13 @@ def synthesize_pair(
 @main.command("synthesize-pair-batch")
 @click.option(
     "--voice1",
-    default="joanna",
-    show_default=True,
-    help="Voice for first texts (typically English).",
+    default=None,
+    help="Voice for first texts (typically English). Defaults to provider's default.",
 )
 @click.option(
     "--voice2",
-    default="hans",
-    show_default=True,
-    help="Voice for second texts (typically L2).",
+    default=None,
+    help="Voice for second texts (typically L2). Defaults to provider's default.",
 )
 @click.option(
     "--rate",
@@ -392,8 +390,8 @@ def synthesize_pair(
 @click.pass_context
 def synthesize_pair_batch(
     ctx: click.Context,
-    voice1: str,
-    voice2: str,
+    voice1: str | None,
+    voice2: str | None,
     rate: int,
     pause: int,
     output_dir: Path | None,
@@ -410,6 +408,8 @@ def synthesize_pair_batch(
     [["strong", "stark"], ["house", "Haus"]]
     """
     provider = _get_provider(ctx)
+    voice1 = voice1 or provider.default_voice
+    voice2 = voice2 or provider.default_voice
     provider.resolve_voice(voice1)
     provider.resolve_voice(voice2)
 
