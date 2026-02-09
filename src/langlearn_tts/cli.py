@@ -10,7 +10,14 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+import boto3
 import click
+from botocore.exceptions import (
+    ClientError,
+    EndpointConnectionError,
+    NoCredentialsError,
+    NoRegionError,
+)
 
 from langlearn_tts.core import PollyClient
 from langlearn_tts.types import (
@@ -136,6 +143,12 @@ def synthesize_batch(
 
     if not isinstance(raw, list):
         raise click.BadParameter("INPUT_FILE must contain a JSON array of strings.")
+
+    for i, item in enumerate(raw):  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+        if not isinstance(item, str):
+            raise click.BadParameter(
+                f"Element {i} must be a string, got {type(item).__name__}."  # pyright: ignore[reportUnknownArgumentType]
+            )
 
     texts = cast("list[str]", raw)
     requests = [SynthesisRequest(text=t, voice=voice_cfg, rate=rate) for t in texts]
@@ -275,6 +288,14 @@ def synthesize_pair_batch(
             "INPUT_FILE must contain a JSON array of [text1, text2] pairs."
         )
 
+    for i, item in enumerate(raw):  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+        if not isinstance(item, list) or len(item) != 2:  # pyright: ignore[reportUnknownArgumentType]
+            raise click.BadParameter(
+                f"Element {i} must be a [text1, text2] pair, got {item!r}."
+            )
+        if not isinstance(item[0], str) or not isinstance(item[1], str):
+            raise click.BadParameter(f"Element {i} must contain strings, got {item!r}.")
+
     raw_pairs = cast("list[list[str]]", raw)
     pairs: list[tuple[SynthesisRequest, SynthesisRequest]] = [
         (
@@ -349,24 +370,30 @@ def doctor() -> None:
 
     # AWS credentials
     try:
-        import boto3
-
         sts: Any = boto3.client("sts")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         identity: Any = sts.get_caller_identity()  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         account: str = identity["Account"]  # pyright: ignore[reportUnknownVariableType]
         _check(_PASS, f"AWS credentials (account: {account})")
-    except Exception:
-        _check(_FAIL, "AWS credentials: not configured or invalid")
+    except NoCredentialsError:
+        _check(_FAIL, "AWS credentials: not configured (run `aws configure`)")
+    except NoRegionError:
+        _check(_FAIL, "AWS credentials: no region set (run `aws configure`)")
+    except EndpointConnectionError:
+        _check(_FAIL, "AWS credentials: cannot reach AWS (check network)")
+    except ClientError as e:
+        _check(_FAIL, f"AWS credentials: {e}")
 
     # AWS Polly access
     try:
-        import boto3 as _boto3
-
-        polly: Any = _boto3.client("polly")  # pyright: ignore[reportUnknownMemberType]
+        polly: Any = boto3.client("polly")  # pyright: ignore[reportUnknownMemberType]
         polly.describe_voices()
         _check(_PASS, "AWS Polly access")
-    except Exception:
-        _check(_FAIL, "AWS Polly access: denied or unavailable")
+    except (NoCredentialsError, NoRegionError):
+        _check(_FAIL, "AWS Polly access: skipped (no credentials)")
+    except EndpointConnectionError:
+        _check(_FAIL, "AWS Polly access: cannot reach AWS (check network)")
+    except ClientError as e:
+        _check(_FAIL, f"AWS Polly access: {e}")
 
     # uvx (optional)
     uvx = shutil.which("uvx")

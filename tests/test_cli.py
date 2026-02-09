@@ -252,17 +252,22 @@ class TestMainGroup:
 
 def _mock_boto3_clients(sts_ok: bool = True, polly_ok: bool = True) -> MagicMock:
     """Return a mock for boto3.client that handles 'sts' and 'polly'."""
+    from botocore.exceptions import ClientError, NoCredentialsError
+
     mock_sts = MagicMock()
     if sts_ok:
         mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
     else:
-        mock_sts.get_caller_identity.side_effect = Exception("no creds")
+        mock_sts.get_caller_identity.side_effect = NoCredentialsError()
 
     mock_polly = MagicMock()
     if polly_ok:
         mock_polly.describe_voices.return_value = {"Voices": []}
     else:
-        mock_polly.describe_voices.side_effect = Exception("access denied")
+        mock_polly.describe_voices.side_effect = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "access denied"}},
+            "DescribeVoices",
+        )
 
     def client_factory(service: str, **_kwargs: object) -> MagicMock:
         if service == "sts":
@@ -307,7 +312,7 @@ class TestDoctorCommand:
         runner = CliRunner()
         with (
             patch(f"{_cli}.shutil.which", side_effect=which_side_effect),
-            patch.dict("sys.modules", {"boto3": mock_boto}),
+            patch(f"{_cli}.boto3", mock_boto),
             patch(f"{_cli}._claude_desktop_config_path", return_value=config_path),
             patch(f"{_cli}._default_output_dir", return_value=tmp_path / "audio"),
         ):

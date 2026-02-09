@@ -53,12 +53,19 @@ def _resolve_output_path(
 
 
 def _play_audio(path: Path) -> None:
-    """Play an audio file using macOS afplay (non-blocking)."""
-    subprocess.Popen(
-        ["afplay", str(path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    """Play an audio file using macOS afplay (non-blocking).
+
+    Logs a warning and returns silently if afplay is not available
+    (e.g. on Linux or Windows).
+    """
+    try:
+        subprocess.Popen(
+            ["afplay", str(path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        logger.warning("afplay not found — auto-play requires macOS")
 
 
 @mcp.tool()

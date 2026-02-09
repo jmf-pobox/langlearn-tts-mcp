@@ -63,22 +63,36 @@ def _best_engine(supported: list[str]) -> EngineType:
 
 
 def _load_voices_from_api() -> None:
-    """Fetch all voices from the Polly API and populate the cache."""
+    """Fetch all voices from the Polly API and populate the cache.
+
+    Paginates through all pages of the describe_voices response.
+    """
     global _voices_loaded
     if _voices_loaded:
         return
 
     client: Any = boto3.client("polly")  # pyright: ignore[reportUnknownMemberType]
-    resp: dict[str, Any] = client.describe_voices()
+    next_token: str | None = None
 
-    for voice in resp["Voices"]:
-        key = voice["Id"].lower()
-        if key not in VOICES:
-            VOICES[key] = VoiceConfig(
-                voice_id=voice["Id"],
-                language_code=voice["LanguageCode"],
-                engine=_best_engine(voice["SupportedEngines"]),
-            )
+    while True:
+        kwargs: dict[str, str] = {}
+        if next_token is not None:
+            kwargs["NextToken"] = next_token
+
+        resp: dict[str, Any] = client.describe_voices(**kwargs)
+
+        for voice in resp["Voices"]:
+            key = voice["Id"].lower()
+            if key not in VOICES:
+                VOICES[key] = VoiceConfig(
+                    voice_id=voice["Id"],
+                    language_code=voice["LanguageCode"],
+                    engine=_best_engine(voice["SupportedEngines"]),
+                )
+
+        next_token = resp.get("NextToken")
+        if not next_token:
+            break
 
     _voices_loaded = True
     logger.debug("Loaded %d voices from Polly API", len(VOICES))
