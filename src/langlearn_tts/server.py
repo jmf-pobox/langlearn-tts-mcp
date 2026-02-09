@@ -120,7 +120,7 @@ def synthesize_batch(
     Args:
         texts: List of texts to synthesize.
         voice: Voice name for all texts. Defaults to joanna.
-        rate: Speech rate as percentage. Defaults to 75.
+        rate: Speech rate as percentage. Defaults to 90.
         merge: If true, produce one merged file instead of separate
             files per text. Defaults to false.
         pause_ms: Pause between segments in milliseconds when merging.
@@ -171,7 +171,7 @@ def synthesize_pair(
         text2: Second text (typically target language).
         voice1: Voice for text1. Defaults to joanna (English).
         voice2: Voice for text2. Defaults to hans (German).
-        rate: Speech rate as percentage. Defaults to 75.
+        rate: Speech rate as percentage. Defaults to 90.
         pause_ms: Pause between the two texts in milliseconds.
             Defaults to 500.
         auto_play: Play the audio after synthesis. Defaults to true.
@@ -221,7 +221,7 @@ def synthesize_pair_batch(
         pairs: List of [text1, text2] pairs.
         voice1: Voice for all first texts. Defaults to joanna.
         voice2: Voice for all second texts. Defaults to hans.
-        rate: Speech rate as percentage. Defaults to 75.
+        rate: Speech rate as percentage. Defaults to 90.
         pause_ms: Pause between pair segments in milliseconds.
             Defaults to 500.
         merge: If true, produce one merged file instead of separate

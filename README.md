@@ -5,19 +5,21 @@
 [![Tests](https://github.com/jmf-pobox/langlearn-tts-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/jmf-pobox/langlearn-tts-mcp/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/langlearn-tts)](https://pypi.org/project/langlearn-tts/)
 
-Text-to-speech toolkit for language learning. Provides both an MCP server (for Claude Desktop) and a CLI with identical functionality.
+Generate audio flashcards and vocabulary drills from text. Ask Claude to synthesize words and phrases in any language, or batch-process entire vocabulary lists from the command line. Audio is slowed to 90% speed by default so learners can hear pronunciation clearly.
 
-Currently supports **AWS Polly** with **ElevenLabs** and **OpenAI TTS** backends planned. The goal: pick the TTS provider that fits your setup — no AWS account required once alternative backends ship.
+The pair mode is the core workflow: give it an English word and its translation, and it produces a single MP3 — `[English audio] [pause] [target language audio]` — ready for Anki, spaced repetition, or passive listening.
+
+Available as both a **Claude Desktop MCP server** (ask Claude to generate audio in conversation) and a **CLI** with identical functionality. Currently supports **AWS Polly**; **ElevenLabs** and **OpenAI TTS** backends are planned so you can pick the provider that fits your setup.
 
 ## Features
 
 - **Single synthesis** — convert text to MP3 in any supported language
 - **Batch synthesis** — synthesize multiple texts, optionally merged into one file
-- **Pair synthesis** — stitch two languages together: `[English audio] [pause] [L2 audio]`
-- **Pair batch** — batch process vocabulary lists as stitched pairs
-- **Auto-play** — MCP tools play audio immediately after synthesis via `afplay`
-- **Configurable speech rate** — default 90% speed for learner-friendly pacing
-- **93 voices, 41 languages** — any voice from the [AWS Polly voice list](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) works out of the box
+- **Pair synthesis** — stitch two languages together: `[English] [pause] [L2]`
+- **Pair batch** — batch-process vocabulary lists as stitched pairs
+- **Auto-play** — MCP tools play audio immediately after synthesis
+- **Configurable speech rate** — default 90% for learner-friendly pacing
+- **93 voices, 41 languages** — any [AWS Polly voice](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) works out of the box
 
 ## Quick Start
 
