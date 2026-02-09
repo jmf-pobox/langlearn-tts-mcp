@@ -12,6 +12,7 @@ import pytest
 from pydub import AudioSegment
 
 from langlearn_tts.core import TTSClient
+from langlearn_tts.providers.openai import OpenAIProvider
 from langlearn_tts.providers.polly import PollyProvider, VoiceConfig
 
 # Test voice configs — constructed directly, no API call needed.
@@ -106,3 +107,26 @@ def polly_provider(mock_boto_client: MagicMock) -> PollyProvider:
 def tts_client(polly_provider: PollyProvider) -> TTSClient:
     """Create a TTSClient backed by a mock PollyProvider."""
     return TTSClient(polly_provider)
+
+
+def _make_openai_speech_response() -> MagicMock:
+    """Create a mock OpenAI audio.speech.create() response with valid MP3."""
+    response = MagicMock()
+    response.content = _get_valid_mp3_bytes()
+    return response
+
+
+@pytest.fixture
+def mock_openai_client() -> MagicMock:
+    """Create a mock openai.OpenAI client that returns valid MP3 bytes."""
+    client = MagicMock()
+    client.audio.speech.create.side_effect = (
+        lambda **kwargs: _make_openai_speech_response()  # pyright: ignore[reportUnknownLambdaType]
+    )
+    return client
+
+
+@pytest.fixture
+def openai_provider(mock_openai_client: MagicMock) -> OpenAIProvider:
+    """Create an OpenAIProvider with a mocked OpenAI client."""
+    return OpenAIProvider(client=mock_openai_client)

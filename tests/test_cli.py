@@ -316,7 +316,7 @@ class TestMainGroup:
             ["--provider", "polly", "synthesize", "hello", "-o", str(out)],
         )
         assert result.exit_code == 0
-        mock_get_provider.assert_called_once_with("polly")
+        mock_get_provider.assert_called_once_with("polly", model=None)
 
 
 # ---------------------------------------------------------------------------

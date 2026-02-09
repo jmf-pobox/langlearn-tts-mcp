@@ -58,14 +58,22 @@ def _get_provider(ctx: click.Context) -> TTSProvider:
     "provider_name",
     default=None,
     envvar="LANGLEARN_TTS_PROVIDER",
-    help="TTS provider (e.g. polly). Default: auto-detect.",
+    help="TTS provider (e.g. polly, openai). Default: auto-detect.",
+)
+@click.option(
+    "--model",
+    default=None,
+    envvar="LANGLEARN_TTS_MODEL",
+    help="Model name (e.g. tts-1, tts-1-hd). Provider-specific.",
 )
 @click.pass_context
-def main(ctx: click.Context, verbose: bool, provider_name: str | None) -> None:
+def main(
+    ctx: click.Context, verbose: bool, provider_name: str | None, model: str | None
+) -> None:
     """langlearn-tts: Text-to-speech for language learning."""
     _configure_logging(verbose)
     ctx.ensure_object(dict)
-    ctx.obj["provider"] = get_provider(provider_name)
+    ctx.obj["provider"] = get_provider(provider_name, model=model)
 
 
 @main.command()
