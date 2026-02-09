@@ -73,6 +73,13 @@ class TestSplitText:
             assert len(chunk) <= 30
         assert "".join(result) == text
 
+    def test_trailing_punctuation_whitespace_no_empty_chunks(self) -> None:
+        # re.split() can yield empty strings at boundaries; verify none leak through.
+        text = "Hello. World. "
+        result = _split_text(text, max_chars=8)
+        for chunk in result:
+            assert chunk  # no empty strings
+
     def test_all_chunks_within_limit(self) -> None:
         text = "short " + "x" * 50 + " words here"
         result = _split_text(text, max_chars=20)

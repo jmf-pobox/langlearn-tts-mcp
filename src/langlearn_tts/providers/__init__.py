@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from langlearn_tts.types import TTSProvider
 
-__all__ = ["get_provider"]
+__all__ = ["auto_detect_provider", "get_provider"]
 
 # Registry mapping provider name → factory callable.
 # Factories are lazy (no imports at module level) to avoid loading

@@ -60,6 +60,9 @@ def _split_text(text: str, max_chars: int = _MAX_CHARS) -> list[str]:
     current = ""
 
     for sentence in sentences:
+        if not sentence:
+            continue
+
         # If a single sentence exceeds the limit, split at word boundaries.
         if len(sentence) > max_chars:
             # Flush current buffer first.

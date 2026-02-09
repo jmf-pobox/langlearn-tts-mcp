@@ -14,7 +14,7 @@ from typing import cast
 import click
 
 from langlearn_tts.core import TTSClient
-from langlearn_tts.providers import get_provider
+from langlearn_tts.providers import auto_detect_provider, get_provider
 from langlearn_tts.types import (
     MergeStrategy,
     SynthesisRequest,
@@ -485,13 +485,11 @@ def doctor(ctx: click.Context) -> None:
 def _detect_install_provider(provider_name: str | None) -> str:
     """Detect the provider to configure for install.
 
-    If explicit, use it. Otherwise prefer openai if OPENAI_API_KEY is set.
+    If explicit, use it. Otherwise delegates to auto_detect_provider().
     """
     if provider_name:
         return provider_name.lower()
-    if os.environ.get("OPENAI_API_KEY"):
-        return "openai"
-    return "polly"
+    return auto_detect_provider()
 
 
 def _build_install_env(provider: str, audio_dir: Path) -> dict[str, str]:
