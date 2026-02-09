@@ -50,7 +50,7 @@ def get_provider(name: str | None = None) -> TTSProvider:
     Raises:
         ValueError: If the provider name is not registered.
     """
-    resolved = name if name is not None else auto_detect_provider()
+    resolved = name.lower() if name is not None else auto_detect_provider()
     factory = PROVIDER_REGISTRY.get(resolved)
     if factory is None:
         available = ", ".join(sorted(PROVIDER_REGISTRY))

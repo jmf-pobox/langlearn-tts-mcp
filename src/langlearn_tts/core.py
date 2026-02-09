@@ -86,15 +86,15 @@ class TTSClient:
             path_1 = tmp_dir / "part1.mp3"
             path_2 = tmp_dir / "part2.mp3"
 
-            self._provider.synthesize(voice_1, path_1)
-            self._provider.synthesize(voice_2, path_2)
+            result_1 = self._provider.synthesize(voice_1, path_1)
+            result_2 = self._provider.synthesize(voice_2, path_2)
 
             stitch_audio([path_1, path_2], output_path, pause_ms)
 
         return SynthesisResult(
             file_path=output_path,
             text=f"{text_1} | {text_2}",
-            voice_name=f"{voice_1.voice}+{voice_2.voice}",
+            voice_name=f"{result_1.voice_name}+{result_2.voice_name}",
         )
 
     def synthesize_pair_batch(
@@ -137,9 +137,12 @@ class TTSClient:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
             tmp_paths: list[Path] = []
+            canonical_voice = ""
             for i, req in enumerate(requests):
                 path = tmp_dir / f"seg_{i:04d}.mp3"
-                self._provider.synthesize(req, path)
+                result = self._provider.synthesize(req, path)
+                if i == 0:
+                    canonical_voice = result.voice_name
                 tmp_paths.append(path)
 
             combined_text = " | ".join(r.text for r in requests)
@@ -150,7 +153,7 @@ class TTSClient:
             SynthesisResult(
                 file_path=out_path,
                 text=combined_text,
-                voice_name=requests[0].voice,
+                voice_name=canonical_voice,
             )
         ]
 
