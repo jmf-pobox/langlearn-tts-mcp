@@ -105,7 +105,11 @@ class ElevenLabsProvider:
         return SynthesisResult(
             file_path=output_path,
             text=request.text,
-            voice_name=request.voice,
+            voice_name=(
+                request.voice
+                if _VOICE_ID_RE.match(request.voice)
+                else request.voice.lower()
+            ),
         )
 
     def resolve_voice(self, name: str) -> str:
@@ -155,7 +159,7 @@ class ElevenLabsProvider:
 
     def _resolve_voice_id(self, name: str) -> str:
         """Resolve a voice name or ID to a voice_id string."""
-        # Accept raw voice_id (20+ alphanumeric chars) directly.
+        # Accept raw voice_id (20 alphanumeric chars) directly.
         if _VOICE_ID_RE.match(name):
             return name
 
@@ -168,8 +172,11 @@ class ElevenLabsProvider:
         if key in VOICES:
             return VOICES[key]
 
-        available = ", ".join(sorted(VOICES))
-        raise ValueError(f"Unknown voice '{name}'. Available: {available}")
+        sample = sorted(VOICES)[:10]
+        hint = ", ".join(sample)
+        if len(VOICES) > 10:
+            hint += f" ... ({len(VOICES)} total)"
+        raise ValueError(f"Unknown voice '{name}'. Available: {hint}")
 
     def _build_voice_settings(self, request: SynthesisRequest) -> Any | None:  # pyright: ignore[reportExplicitAny]
         """Build VoiceSettings from request fields, or None for defaults."""
