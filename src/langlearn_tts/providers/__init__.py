@@ -13,36 +13,48 @@ __all__ = ["get_provider"]
 
 # Registry mapping provider name → factory callable.
 # Factories are lazy (no imports at module level) to avoid loading
-# boto3/httpx/etc when the provider isn't used.
-PROVIDER_REGISTRY: dict[str, Callable[[], TTSProvider]] = {}
+# boto3/openai/etc when the provider isn't used.
+# Factories accept **kwargs to allow provider-specific options (e.g. model).
+PROVIDER_REGISTRY: dict[str, Callable[..., TTSProvider]] = {}
 
 
-def _register_polly() -> TTSProvider:
+def _register_polly(**kwargs: str | None) -> TTSProvider:
     from langlearn_tts.providers.polly import PollyProvider
 
     return PollyProvider()
 
 
+def _register_openai(**kwargs: str | None) -> TTSProvider:
+    from langlearn_tts.providers.openai import OpenAIProvider
+
+    model = kwargs.get("model")
+    return OpenAIProvider(model=model)
+
+
 PROVIDER_REGISTRY["polly"] = _register_polly
+PROVIDER_REGISTRY["openai"] = _register_openai
 
 
 def auto_detect_provider() -> str:
     """Detect the best available provider from environment.
 
     Checks LANGLEARN_TTS_PROVIDER env var first.
-    Defaults to 'polly'.
+    Falls back to 'openai' if OPENAI_API_KEY is set, else 'polly'.
     """
     env = os.environ.get("LANGLEARN_TTS_PROVIDER")
     if env:
         return env.lower()
+    if os.environ.get("OPENAI_API_KEY"):
+        return "openai"
     return "polly"
 
 
-def get_provider(name: str | None = None) -> TTSProvider:
+def get_provider(name: str | None = None, **kwargs: str | None) -> TTSProvider:
     """Look up a provider by name, or auto-detect.
 
     Args:
-        name: Provider name (e.g. 'polly'). If None, auto-detects.
+        name: Provider name (e.g. 'polly', 'openai'). If None, auto-detects.
+        **kwargs: Provider-specific options (e.g. model='tts-1-hd').
 
     Returns:
         An initialized TTSProvider instance.
@@ -56,4 +68,4 @@ def get_provider(name: str | None = None) -> TTSProvider:
         available = ", ".join(sorted(PROVIDER_REGISTRY))
         msg = f"Unknown provider '{resolved}'. Available: {available}"
         raise ValueError(msg)
-    return factory()
+    return factory(**kwargs)
