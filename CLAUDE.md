@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-TTS MCP server and CLI for language learning. Currently uses AWS Polly; future providers (ElevenLabs, OpenAI) tracked in beads.
+TTS MCP server and CLI for language learning. Supports AWS Polly and OpenAI TTS; future provider (ElevenLabs) tracked in beads.
 
 - **Package**: `langlearn-tts`
 - **CLI**: `langlearn-tts`
@@ -54,8 +54,9 @@ Module structure under `src/langlearn_tts/`:
 | `server.py` | FastMCP server — exposes same operations as MCP tools |
 | `providers/__init__.py` | Provider registry, `get_provider()`, auto-detection |
 | `providers/polly.py` | `PollyProvider` — AWS Polly synthesis, voice resolution, health checks. Only file with boto3 |
+| `providers/openai.py` | `OpenAIProvider` — OpenAI TTS synthesis, static voices, auto-chunking >4096 chars. Only file with openai |
 
-Tests mirror source: `test_types.py`, `test_core.py`, `test_cli.py`, `test_polly.py` plus `conftest.py` for shared fixtures.
+Tests mirror source: `test_types.py`, `test_core.py`, `test_cli.py`, `test_polly.py`, `test_openai_provider.py` plus `conftest.py` for shared fixtures.
 
 ## Python Coding Standards
 
@@ -109,7 +110,7 @@ Tests mirror source: `test_types.py`, `test_core.py`, `test_cli.py`, `test_polly
 
 | Metric | Value |
 |--------|-------|
-| Unit tests | 82 |
+| Unit tests | 111 |
 | All pass | Required |
 
 ## Issue Tracking with Beads
