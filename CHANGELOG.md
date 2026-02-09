@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-02-09
+
+### Fixed
+- Suppress pydub 0.25.1 `SyntaxWarning` on Python 3.13 — invalid escape sequences in pydub's regex strings printed to stderr on first run after install
+
 ## [0.4.3] - 2026-02-09
 
 ### Changed
