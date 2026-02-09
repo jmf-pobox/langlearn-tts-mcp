@@ -19,7 +19,7 @@ Available as both a **Claude Desktop MCP server** (ask Claude to generate audio 
 - **Pair batch** — batch-process vocabulary lists as stitched pairs
 - **Auto-play** — MCP tools play audio immediately after synthesis
 - **Configurable speech rate** — default 90% for learner-friendly pacing
-- **Two providers** — AWS Polly (93 voices, 41 languages) or OpenAI TTS (9 voices, 50+ languages)
+- **Two providers** — AWS Polly (93 voices, 41 languages) or OpenAI TTS (9 voices, 57 languages)
 - **Auto-detection** — defaults to OpenAI when `OPENAI_API_KEY` is set, otherwise Polly
 
 ## Quick Start
@@ -71,7 +71,7 @@ Pick one provider. The tool auto-detects which to use: if `OPENAI_API_KEY` is se
 export OPENAI_API_KEY=sk-...
 ```
 
-9 built-in voices, 50+ languages. Pricing: $15/1M characters (tts-1) or $30/1M (tts-1-hd).
+9 built-in voices, 57 languages. Pricing: $15/1M characters (tts-1) or $30/1M (tts-1-hd).
 
 **Option B — AWS Polly:**
 
