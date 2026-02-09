@@ -147,6 +147,44 @@ The `LANGLEARN_TTS_OUTPUT_DIR` environment variable sets the default output dire
 
 Restart Claude Desktop after editing the config.
 
+## AI Tutor Prompts
+
+langlearn-tts ships with 28 ready-made AI tutor prompts — one for each combination of 7 languages and 4 levels. Paste a prompt into a Claude Desktop Project's Instructions field, and Claude becomes a language tutor that generates audio during lessons.
+
+### Browse prompts
+
+```bash
+# List all available prompts
+langlearn-tts prompt list
+
+# Print a prompt (pipe to clipboard with pbcopy on macOS)
+langlearn-tts prompt show german-high-school | pbcopy
+```
+
+### Set up a Claude Desktop Project
+
+1. In Claude Desktop, click **Projects** in the sidebar
+2. Click **Create Project** and name it (e.g., "German with Herr Schmidt")
+3. Open the project, click **Set custom instructions**
+4. Paste the prompt content into the Instructions field
+5. Start a new conversation within that project
+
+Using a Project keeps the tutor persona scoped to language learning. Other conversations are unaffected.
+
+### Available languages and levels
+
+| Language | High School | 1st Year | 2nd Year | Advanced |
+|----------|-------------|----------|----------|----------|
+| German | Herr Schmidt | Professorin Weber | Professor Hartmann | Professor Becker |
+| Spanish | Profesora Elena | Profesor Garcia | Profesora Carmen | Profesora Reyes |
+| French | Madame Moreau | Professeur Laurent | Professeur Dubois | Professeur Beaumont |
+| Russian | Irina Petrovna | Professor Dmitri | Professor Natasha | Professor Mikhail |
+| Korean | Kim-seonsaengnim | Professor Park | Professor Kim | Professor Yoon |
+| Japanese | Tanaka-sensei | Yamamoto-sensei | Suzuki-sensei | Mori-sensei |
+| Chinese | Laoshi Wang | Professor Chen | Professor Zhang | Professor Wei |
+
+Each prompt creates a tutor persona calibrated to the student's level, based on [Mollick & Mollick's "Assigning AI" framework](https://ssrn.com/abstract=4475995). Customize any prompt by adjusting student background, voice selection, speech rate, or focus areas.
+
 ## Troubleshooting
 
 ```bash
@@ -166,7 +204,7 @@ Common voices for language learning:
 | joanna | English (US) | neural |
 | matthew | English (US) | neural |
 | daniel | German | neural |
-| vicki | German | neural |
+| vicki | German (female) | neural |
 | lucia | Spanish (European) | neural |
 | lupe | Spanish (US) | neural |
 | léa | French | neural |
@@ -198,6 +236,10 @@ langlearn-tts synthesize-batch words.json -d output/ --merge --pause 800
 
 # Pair batch from JSON file ([["strong", "stark"], ["house", "Haus"]])
 langlearn-tts synthesize-pair-batch pairs.json -d output/
+
+# Browse AI tutor prompts
+langlearn-tts prompt list
+langlearn-tts prompt show german-high-school | pbcopy
 ```
 
 ## MCP Tools

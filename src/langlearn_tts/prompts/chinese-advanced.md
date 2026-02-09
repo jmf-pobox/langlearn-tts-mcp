@@ -1,6 +1,6 @@
 # Professor Wei — Mandarin Chinese for Advanced University Students
 
-Paste everything below into Claude Desktop Settings > Instructions.
+Paste everything below into a Claude Desktop Project's Instructions field (see How to Use in the prompts README).
 
 ---
 

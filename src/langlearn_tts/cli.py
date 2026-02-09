@@ -31,12 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 def _configure_logging(verbose: bool) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(
         level=level,
         format="%(levelname)s: %(message)s",
         stream=sys.stderr,
     )
+    # Suppress noisy library loggers even in verbose mode
+    for name in ("boto3", "botocore", "urllib3", "s3transfer"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def _print_result(result: SynthesisResult) -> None:
@@ -531,3 +534,60 @@ def install(output_dir: Path | None, uvx_path: str | None) -> None:
     click.echo(f"Config: {config_path}")
     click.echo(f"Output: {audio_dir}")
     click.echo("Restart Claude Desktop to activate.")
+
+
+# ---------------------------------------------------------------------------
+# prompt
+# ---------------------------------------------------------------------------
+
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+
+def _prompt_names() -> list[str]:
+    """Return sorted prompt names (without .md extension)."""
+    if not _PROMPTS_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in _PROMPTS_DIR.glob("*.md") if p.name != "README.md")
+
+
+def _extract_instructions(text: str) -> str:
+    """Return the content below the --- separator."""
+    parts = text.split("\n---\n", 1)
+    if len(parts) == 2:
+        return parts[1].strip()
+    return text.strip()
+
+
+@main.group()
+def prompt() -> None:
+    """Browse AI tutor prompts for Claude Desktop."""
+
+
+@prompt.command("list")
+def prompt_list() -> None:
+    """List available AI tutor prompts."""
+    names = _prompt_names()
+    if not names:
+        click.echo("No prompts found.")
+        return
+    for name in names:
+        text = (_PROMPTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+        title = text.split("\n", 1)[0].lstrip("# ").strip()
+        click.echo(f"  {name:<40} {title}")
+
+
+@prompt.command("show")
+@click.argument("name")
+def prompt_show(name: str) -> None:
+    """Print a prompt for pasting into Claude Desktop Project Instructions.
+
+    Pipe to clipboard: langlearn-tts prompt show german-high-school | pbcopy
+    """
+    names = _prompt_names()
+    if name not in names:
+        raise click.ClickException(
+            f"Unknown prompt: {name}\n"
+            "Run 'langlearn-tts prompt list' to see available prompts."
+        )
+    text = (_PROMPTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+    click.echo(_extract_instructions(text))

@@ -4,10 +4,28 @@ These prompts transform Claude into a personalized language tutor that generates
 
 ## How to Use
 
-1. Install and configure langlearn-tts with Claude Desktop (see main [README](../README.md))
-2. Open Claude Desktop Settings > Instructions
-3. Paste the contents of any prompt file into the Instructions field
-4. Start a new conversation — Claude will adopt the tutor persona and approach
+### From the CLI
+
+```bash
+# List all available prompts
+langlearn-tts prompt list
+
+# Print a prompt (pipe to clipboard with pbcopy on macOS)
+langlearn-tts prompt show german-high-school | pbcopy
+```
+
+### Setting up Claude Desktop
+
+1. Install and configure langlearn-tts with Claude Desktop (see main [README](../../../README.md))
+2. In Claude Desktop, create a **Project** for your language:
+   - Click the **Projects** icon in the sidebar
+   - Click **Create Project**
+   - Name it (e.g., "German Lessons with Herr Schmidt")
+3. Open the project, then click **Set custom instructions** (or the pencil icon next to "Instructions")
+4. Paste the prompt content into the Instructions field
+5. Start a new conversation within that project — Claude adopts the tutor persona
+
+Using a Project (rather than global Settings > Instructions) keeps the tutor persona scoped to language learning conversations. Your other Claude conversations remain unaffected.
 
 ## Prompt Design
 
@@ -31,6 +49,12 @@ Prompts are calibrated by level using established second-language acquisition pr
 | Advanced | Content-based instruction, minimal scaffolding | Literature, debate, professional contexts, nuance |
 
 ## Available Prompts
+
+### German
+- [`german-high-school.md`](german-high-school.md) — Herr Schmidt, high school beginners
+- [`german-university-1st-year.md`](german-university-1st-year.md) — Professorin Weber, 1st year university
+- [`german-university-2nd-year.md`](german-university-2nd-year.md) — Professor Hartmann, 2nd year university
+- [`german-advanced.md`](german-advanced.md) — Professor Becker, advanced university
 
 ### Spanish
 - [`spanish-high-school.md`](spanish-high-school.md) — Profesora Elena, high school beginners
