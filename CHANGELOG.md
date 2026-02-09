@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-02-08
+
 ### Changed
 - Default provider is now Polly (was OpenAI when `OPENAI_API_KEY` was set) — dedicated per-language neural voices produce more native-sounding pronunciation
 - OpenAI provider requires explicit opt-in via `--provider openai` or `LANGLEARN_TTS_PROVIDER=openai`
