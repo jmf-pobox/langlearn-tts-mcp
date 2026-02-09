@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-08
+
 ### Added
 - `TTSProvider` protocol and `HealthCheck` dataclass in `types.py`
 - `providers` package with `PollyProvider`, `get_provider()`, and provider registry
