@@ -18,10 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-detection: defaults to OpenAI when `OPENAI_API_KEY` is set
 
 ### Changed
+- `install` command auto-detects provider and writes `LANGLEARN_TTS_PROVIDER` + `OPENAI_API_KEY` (when applicable) into Claude Desktop config
+- `install` command accepts `--provider` flag to override auto-detection
+- `doctor` command shows active provider name
 - `SynthesisRequest.voice` is now `str` (voice name) instead of `VoiceConfig`
 - All boto3 usage isolated to `providers/polly.py` — core, CLI, and server are provider-agnostic
 - `doctor` command delegates provider-specific checks to `provider.check_health()`
 - `get_provider()` accepts `**kwargs` for provider-specific options (e.g. `model`)
+
+### Fixed
+- OpenAI chunking: `_split_at_words` now character-splits words exceeding `max_chars` instead of emitting oversized chunks
 
 ### Removed
 - `PollyClient` class from `core.py` (replaced by `TTSClient`)

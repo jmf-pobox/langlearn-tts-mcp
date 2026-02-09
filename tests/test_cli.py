@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -367,6 +368,7 @@ class TestDoctorCommand:
         result = self._run_doctor(tmp_path)
         assert result.exit_code == 0
         assert "✓ Python" in result.output
+        assert "✓ Provider: polly" in result.output
         assert "✓ ffmpeg" in result.output
         assert "✓ AWS credentials" in result.output
         assert "✓ AWS Polly" in result.output
@@ -456,7 +458,10 @@ class TestInstallCommand:
                 f"{_CLI}._claude_desktop_config_path",
                 return_value=config_path,
             ),
+            patch.dict(os.environ, {}, clear=False),
         ):
+            # Ensure OPENAI_API_KEY is not set so polly is auto-detected
+            os.environ.pop("OPENAI_API_KEY", None)
             result = runner.invoke(
                 main,
                 ["install", "--output-dir", str(audio_dir)],
@@ -470,6 +475,7 @@ class TestInstallCommand:
         assert server["command"] == _UVX
         assert server["args"] == ["--from", "langlearn-tts", "langlearn-tts-server"]
         assert server["env"]["LANGLEARN_TTS_OUTPUT_DIR"] == str(audio_dir)
+        assert server["env"]["LANGLEARN_TTS_PROVIDER"] == "polly"
 
     @patch(f"{_CLI}.get_provider")
     def test_preserves_other_servers(
@@ -605,3 +611,98 @@ class TestInstallCommand:
 
         assert result.exit_code == 0
         assert audio_dir.is_dir()
+
+    @patch(f"{_CLI}.get_provider")
+    def test_install_detects_openai(
+        self, mock_get_provider: MagicMock, tmp_path: Path
+    ) -> None:
+        config_path = tmp_path / "Claude" / "claude_desktop_config.json"
+        audio_dir = tmp_path / "audio"
+
+        runner = CliRunner()
+        with (
+            patch(f"{_CLI}.shutil.which", return_value=_UVX),
+            patch(f"{_CLI}._claude_desktop_config_path", return_value=config_path),
+            patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key"}, clear=False),
+        ):
+            result = runner.invoke(main, ["install", "--output-dir", str(audio_dir)])
+
+        assert result.exit_code == 0
+        assert "Provider: openai" in result.output
+
+        data = json.loads(config_path.read_text())
+        env = data["mcpServers"]["langlearn-tts"]["env"]
+        assert env["LANGLEARN_TTS_PROVIDER"] == "openai"
+        assert env["OPENAI_API_KEY"] == "sk-test-key"
+
+    @patch(f"{_CLI}.get_provider")
+    def test_install_defaults_polly(
+        self, mock_get_provider: MagicMock, tmp_path: Path
+    ) -> None:
+        config_path = tmp_path / "Claude" / "claude_desktop_config.json"
+        audio_dir = tmp_path / "audio"
+
+        runner = CliRunner()
+        with (
+            patch(f"{_CLI}.shutil.which", return_value=_UVX),
+            patch(f"{_CLI}._claude_desktop_config_path", return_value=config_path),
+            patch.dict(os.environ, {}, clear=False),
+        ):
+            os.environ.pop("OPENAI_API_KEY", None)
+            result = runner.invoke(main, ["install", "--output-dir", str(audio_dir)])
+
+        assert result.exit_code == 0
+        assert "Provider: polly" in result.output
+
+        data = json.loads(config_path.read_text())
+        env = data["mcpServers"]["langlearn-tts"]["env"]
+        assert env["LANGLEARN_TTS_PROVIDER"] == "polly"
+        assert "OPENAI_API_KEY" not in env
+
+    @patch(f"{_CLI}.get_provider")
+    def test_install_explicit_provider_overrides(
+        self, mock_get_provider: MagicMock, tmp_path: Path
+    ) -> None:
+        config_path = tmp_path / "Claude" / "claude_desktop_config.json"
+        audio_dir = tmp_path / "audio"
+
+        runner = CliRunner()
+        with (
+            patch(f"{_CLI}.shutil.which", return_value=_UVX),
+            patch(f"{_CLI}._claude_desktop_config_path", return_value=config_path),
+            patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-key"}, clear=False),
+        ):
+            result = runner.invoke(
+                main,
+                ["install", "--output-dir", str(audio_dir), "--provider", "polly"],
+            )
+
+        assert result.exit_code == 0
+        assert "Provider: polly" in result.output
+
+        data = json.loads(config_path.read_text())
+        env = data["mcpServers"]["langlearn-tts"]["env"]
+        assert env["LANGLEARN_TTS_PROVIDER"] == "polly"
+        assert "OPENAI_API_KEY" not in env
+
+    @patch(f"{_CLI}.get_provider")
+    def test_install_openai_without_key_fails(
+        self, mock_get_provider: MagicMock, tmp_path: Path
+    ) -> None:
+        config_path = tmp_path / "Claude" / "claude_desktop_config.json"
+        audio_dir = tmp_path / "audio"
+
+        runner = CliRunner()
+        with (
+            patch(f"{_CLI}.shutil.which", return_value=_UVX),
+            patch(f"{_CLI}._claude_desktop_config_path", return_value=config_path),
+            patch.dict(os.environ, {}, clear=False),
+        ):
+            os.environ.pop("OPENAI_API_KEY", None)
+            result = runner.invoke(
+                main,
+                ["install", "--output-dir", str(audio_dir), "--provider", "openai"],
+            )
+
+        assert result.exit_code != 0
+        assert "OPENAI_API_KEY" in result.output

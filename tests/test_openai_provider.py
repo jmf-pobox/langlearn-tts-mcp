@@ -9,6 +9,7 @@ import pytest
 
 from langlearn_tts.providers.openai import (
     OpenAIProvider,
+    _split_at_words,  # pyright: ignore[reportPrivateUsage]
     _split_text,  # pyright: ignore[reportPrivateUsage]
 )
 from langlearn_tts.types import SynthesisRequest
@@ -63,6 +64,40 @@ class TestSplitText:
         combined = " ".join(result)
         assert "Stop!" in combined
         assert "Why?" in combined
+
+    def test_oversized_word_gets_character_split(self) -> None:
+        text = "a" * 100
+        result = _split_text(text, max_chars=30)
+        assert len(result) == 4  # 30+30+30+10
+        for chunk in result:
+            assert len(chunk) <= 30
+        assert "".join(result) == text
+
+    def test_all_chunks_within_limit(self) -> None:
+        text = "short " + "x" * 50 + " words here"
+        result = _split_text(text, max_chars=20)
+        for chunk in result:
+            assert len(chunk) <= 20
+
+
+class TestSplitAtWords:
+    def test_oversized_word_split(self) -> None:
+        result = _split_at_words("a" * 100, max_chars=30)
+        assert len(result) == 4
+        for chunk in result:
+            assert len(chunk) <= 30
+        assert "".join(result) == "a" * 100
+
+    def test_mixed_normal_and_oversized(self) -> None:
+        text = "hello " + "x" * 50 + " world"
+        result = _split_at_words(text, max_chars=20)
+        for chunk in result:
+            assert len(chunk) <= 20
+        assert "".join(c.strip() for c in result) == text.replace(" ", "")
+
+    def test_normal_words_unchanged(self) -> None:
+        result = _split_at_words("one two three", max_chars=20)
+        assert result == ["one two three"]
 
 
 class TestOpenAIProviderName:
