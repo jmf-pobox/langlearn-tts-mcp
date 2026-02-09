@@ -28,6 +28,22 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("langlearn-tts")
 
 
+def _validate_voice_settings(
+    stability: float | None,
+    similarity: float | None,
+    style: float | None,
+) -> None:
+    """Validate ElevenLabs voice settings are in 0.0-1.0 range."""
+    for name, value in [
+        ("stability", stability),
+        ("similarity", similarity),
+        ("style", style),
+    ]:
+        if value is not None and not 0.0 <= value <= 1.0:
+            msg = f"{name} must be between 0.0 and 1.0, got {value}"
+            raise ValueError(msg)
+
+
 def _default_output_dir() -> Path:
     """Resolve the default output directory from environment or fallback."""
     env_dir = os.environ.get("LANGLEARN_TTS_OUTPUT_DIR")
@@ -107,6 +123,7 @@ def synthesize(
     Returns:
         JSON string with file_path, text, and voice fields.
     """
+    _validate_voice_settings(stability, similarity, style)
     provider = get_provider()
     provider.resolve_voice(voice)
     request = SynthesisRequest(
@@ -170,6 +187,7 @@ def synthesize_batch(
         JSON string with list of results, each containing file_path,
         text, and voice fields.
     """
+    _validate_voice_settings(stability, similarity, style)
     provider = get_provider()
     provider.resolve_voice(voice)
     requests = [
@@ -238,6 +256,7 @@ def synthesize_pair(
     Returns:
         JSON string with file_path, text, and voice fields.
     """
+    _validate_voice_settings(stability, similarity, style)
     provider = get_provider()
     provider.resolve_voice(voice1)
     provider.resolve_voice(voice2)
@@ -314,6 +333,7 @@ def synthesize_pair_batch(
     Returns:
         JSON string with list of results.
     """
+    _validate_voice_settings(stability, similarity, style)
     provider = get_provider()
     provider.resolve_voice(voice1)
     provider.resolve_voice(voice2)
