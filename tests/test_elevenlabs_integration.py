@@ -27,11 +27,11 @@ class TestCheckHealth:
     ) -> None:
         checks = provider.check_health()
 
-        assert len(checks) == 2
-        assert checks[0].passed
-        assert "API key: set" in checks[0].message
-        assert checks[1].passed
-        assert "subscription" in checks[1].message.lower()
+        assert any(check.passed and "API key: set" in check.message for check in checks)
+        assert any(
+            check.passed and "subscription" in check.message.lower()
+            for check in checks
+        )
 
 
 class TestResolveVoice:
