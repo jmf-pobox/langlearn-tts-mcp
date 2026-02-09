@@ -31,7 +31,7 @@ _MODEL_CHAR_LIMITS: dict[str, int] = {
 _DEFAULT_CHAR_LIMIT = 10_000
 
 # ElevenLabs voice IDs are 20-char alphanumeric strings.
-_VOICE_ID_RE = re.compile(r"^[0-9a-zA-Z]{20,}$")
+_VOICE_ID_RE = re.compile(r"^[0-9a-zA-Z]{20}$")
 
 # Cache of resolved voices, keyed by lowercase name → voice_id.
 VOICES: dict[str, str] = {}
@@ -88,7 +88,7 @@ class ElevenLabsProvider:
         voice_id = self._resolve_voice_id(request.voice)
 
         if request.rate != 100:
-            logger.warning(
+            logger.debug(
                 "ElevenLabs does not support rate adjustment (got rate=%d). "
                 "Audio will be at normal speed.",
                 request.rate,

@@ -212,8 +212,8 @@ class TestElevenLabsProviderCheckHealth:
         assert not checks[1].passed
 
 
-class TestElevenLabsProviderRateWarning:
-    def test_logs_warning_when_rate_not_100(
+class TestElevenLabsProviderRateMessage:
+    def test_logs_debug_when_rate_not_100(
         self,
         elevenlabs_provider: ElevenLabsProvider,
         tmp_output_dir: Path,
@@ -222,13 +222,13 @@ class TestElevenLabsProviderRateWarning:
         request = SynthesisRequest(text="test", voice="rachel", rate=90)
         out = tmp_output_dir / "rate.mp3"
 
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             elevenlabs_provider.synthesize(request, out)
 
         assert "does not support rate adjustment" in caplog.text
         assert "rate=90" in caplog.text
 
-    def test_no_warning_at_rate_100(
+    def test_no_message_at_rate_100(
         self,
         elevenlabs_provider: ElevenLabsProvider,
         tmp_output_dir: Path,
@@ -237,7 +237,7 @@ class TestElevenLabsProviderRateWarning:
         request = SynthesisRequest(text="test", voice="rachel", rate=100)
         out = tmp_output_dir / "rate100.mp3"
 
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             elevenlabs_provider.synthesize(request, out)
 
         assert "does not support rate adjustment" not in caplog.text

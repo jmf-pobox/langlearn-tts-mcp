@@ -102,19 +102,19 @@ def main(
 @click.option(
     "--stability",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice stability (0.0-1.0).",
 )
 @click.option(
     "--similarity",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice similarity boost (0.0-1.0).",
 )
 @click.option(
     "--style",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice style/expressiveness (0.0-1.0).",
 )
 @click.option(
@@ -193,19 +193,19 @@ def synthesize(
 @click.option(
     "--stability",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice stability (0.0-1.0).",
 )
 @click.option(
     "--similarity",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice similarity boost (0.0-1.0).",
 )
 @click.option(
     "--style",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice style/expressiveness (0.0-1.0).",
 )
 @click.option(
@@ -310,19 +310,19 @@ def synthesize_batch(
 @click.option(
     "--stability",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice stability (0.0-1.0).",
 )
 @click.option(
     "--similarity",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice similarity boost (0.0-1.0).",
 )
 @click.option(
     "--style",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice style/expressiveness (0.0-1.0).",
 )
 @click.option(
@@ -424,19 +424,19 @@ def synthesize_pair(
 @click.option(
     "--stability",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice stability (0.0-1.0).",
 )
 @click.option(
     "--similarity",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice similarity boost (0.0-1.0).",
 )
 @click.option(
     "--style",
     default=None,
-    type=float,
+    type=click.FloatRange(0.0, 1.0),
     help="ElevenLabs voice style/expressiveness (0.0-1.0).",
 )
 @click.option(
@@ -677,7 +677,8 @@ def _build_install_env(provider: str, audio_dir: Path) -> dict[str, str]:
         key = os.environ.get("ELEVENLABS_API_KEY")
         if not key:
             raise click.ClickException(
-                "ELEVENLABS_API_KEY is not set. Export it or use --provider polly."
+                "ELEVENLABS_API_KEY is not set."
+                " Export it or use --provider polly/openai."
             )
         env["ELEVENLABS_API_KEY"] = key
     elif provider == "openai":
