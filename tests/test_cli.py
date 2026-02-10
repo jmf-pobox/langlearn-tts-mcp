@@ -25,7 +25,10 @@ def _make_mock_provider() -> MagicMock:
     """Create a mock TTSProvider."""
     provider = MagicMock()
     provider.name = "polly"
-    provider.resolve_voice.side_effect = lambda name: name.capitalize()  # pyright: ignore[reportUnknownLambdaType,reportUnknownMemberType]
+    provider.default_voice = "joanna"
+    provider.resolve_voice.side_effect = lambda name, language=None: name.capitalize()  # pyright: ignore[reportUnknownLambdaType,reportUnknownMemberType]
+    provider.infer_language_from_voice.return_value = "en"
+    provider.get_default_voice.side_effect = lambda lang: "joanna"  # pyright: ignore[reportUnknownLambdaType,reportUnknownMemberType]
     provider.check_health.return_value = [
         HealthCheck(passed=True, message="AWS credentials (account: 123456789012)"),
         HealthCheck(passed=True, message="AWS Polly access"),
@@ -144,6 +147,86 @@ class TestSynthesizeCommand:
             ["synthesize", "hello", "--voice", "nonexistent"],
         )
         assert result.exit_code != 0
+
+    @patch(f"{_CLI}.TTSClient")
+    @patch(f"{_CLI}.get_provider")
+    def test_synthesize_with_language(
+        self, mock_get_provider: MagicMock, mock_client_cls: MagicMock, tmp_path: Path
+    ) -> None:
+        out = tmp_path / "test.mp3"
+        provider = _make_mock_provider()
+        provider.get_default_voice.side_effect = lambda lang: "vicki"  # pyright: ignore[reportUnknownLambdaType,reportUnknownMemberType]
+        mock_get_provider.return_value = provider
+        mock_instance = mock_client_cls.return_value
+        mock_instance.synthesize.return_value = _mock_synthesize_result(out)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["synthesize", "Guten Tag", "--language", "de", "-o", str(out)],
+        )
+
+        assert result.exit_code == 0
+        request = mock_instance.synthesize.call_args[0][0]
+        assert request.voice == "vicki"
+        assert request.language == "de"
+
+    @patch(f"{_CLI}.TTSClient")
+    @patch(f"{_CLI}.get_provider")
+    def test_synthesize_lang_shorthand(
+        self, mock_get_provider: MagicMock, mock_client_cls: MagicMock, tmp_path: Path
+    ) -> None:
+        out = tmp_path / "test.mp3"
+        mock_get_provider.return_value = _make_mock_provider()
+        mock_instance = mock_client_cls.return_value
+        mock_instance.synthesize.return_value = _mock_synthesize_result(out)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["synthesize", "hello", "--lang", "en", "-o", str(out)],
+        )
+        assert result.exit_code == 0
+
+    @patch(f"{_CLI}.get_provider")
+    def test_synthesize_invalid_language(self, mock_get_provider: MagicMock) -> None:
+        mock_get_provider.return_value = _make_mock_provider()
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["synthesize", "hello", "--language", "xxx"],
+        )
+        assert result.exit_code != 0
+
+    @patch(f"{_CLI}.TTSClient")
+    @patch(f"{_CLI}.get_provider")
+    def test_synthesize_voice_and_language(
+        self, mock_get_provider: MagicMock, mock_client_cls: MagicMock, tmp_path: Path
+    ) -> None:
+        out = tmp_path / "test.mp3"
+        mock_get_provider.return_value = _make_mock_provider()
+        mock_instance = mock_client_cls.return_value
+        mock_instance.synthesize.return_value = _mock_synthesize_result(out)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "synthesize",
+                "Hallo",
+                "--voice",
+                "hans",
+                "--language",
+                "de",
+                "-o",
+                str(out),
+            ],
+        )
+        assert result.exit_code == 0
+        request = mock_instance.synthesize.call_args[0][0]
+        assert request.voice == "hans"
+        assert request.language == "de"
 
 
 class TestSynthesizeBatchCommand:
