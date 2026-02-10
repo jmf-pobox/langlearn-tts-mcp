@@ -21,6 +21,7 @@ from langlearn_tts.types import (
     SynthesisRequest,
     SynthesisResult,
     TTSProvider,
+    validate_language,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,34 @@ def _get_provider(ctx: click.Context) -> TTSProvider:
     """Retrieve the TTSProvider from the Click context."""
     obj = cast("dict[str, TTSProvider]", ctx.ensure_object(dict))  # pyright: ignore[reportUnknownMemberType]
     return obj["provider"]
+
+
+def _resolve_voice_and_language(
+    provider: TTSProvider,
+    voice: str | None,
+    language: str | None,
+) -> tuple[str, str | None]:
+    """Resolve voice and language from user input.
+
+    If only language is provided, selects the provider's default voice for it.
+    If only voice is provided, infers language from the voice (best-effort).
+    If both, validates compatibility.
+    """
+    if language is not None:
+        language = validate_language(language)
+
+    if voice is None and language is not None:
+        voice = provider.get_default_voice(language)
+    elif voice is None:
+        voice = provider.default_voice
+
+    if language is not None:
+        provider.resolve_voice(voice, language)
+    else:
+        provider.resolve_voice(voice)
+        language = provider.infer_language_from_voice(voice)
+
+    return voice, language
 
 
 def _voice_settings_options[F: Callable[..., object]](fn: F) -> F:
@@ -126,6 +155,12 @@ def main(
     help=f"Voice name. Default: {_VOICE_DEFAULTS}.",
 )
 @click.option(
+    "--language",
+    "--lang",
+    default=None,
+    help="ISO 639-1 language code (e.g. de, ko). Auto-selects voice if omitted.",
+)
+@click.option(
     "--rate",
     default=90,
     show_default=True,
@@ -145,6 +180,7 @@ def synthesize(
     ctx: click.Context,
     text: str,
     voice: str | None,
+    language: str | None,
     rate: int,
     output: Path | None,
     stability: float | None,
@@ -158,11 +194,11 @@ def synthesize(
     [whisper], [laughs] to control delivery.
     """
     provider = _get_provider(ctx)
-    voice = voice or provider.default_voice
-    provider.resolve_voice(voice)
+    voice, language = _resolve_voice_and_language(provider, voice, language)
     request = SynthesisRequest(
         text=text,
         voice=voice,
+        language=language,
         rate=rate,
         stability=stability,
         similarity=similarity,
@@ -183,6 +219,12 @@ def synthesize(
     "--voice",
     default=None,
     help=(f"Voice name for all texts. Default: {_VOICE_DEFAULTS}."),
+)
+@click.option(
+    "--language",
+    "--lang",
+    default=None,
+    help="ISO 639-1 language code (e.g. de, ko). Auto-selects voice if omitted.",
 )
 @click.option(
     "--rate",
@@ -217,6 +259,7 @@ def synthesize(
 def synthesize_batch(
     ctx: click.Context,
     voice: str | None,
+    language: str | None,
     rate: int,
     output_dir: Path | None,
     merge: bool,
@@ -249,14 +292,14 @@ def synthesize_batch(
                 f"Element {i} must be a string, got {type(item).__name__}."  # pyright: ignore[reportUnknownArgumentType]
             )
 
-    voice = voice or provider.default_voice
-    provider.resolve_voice(voice)
+    voice, language = _resolve_voice_and_language(provider, voice, language)
     texts = cast("list[str]", raw)
     boost = speaker_boost if speaker_boost else None
     requests = [
         SynthesisRequest(
             text=t,
             voice=voice,
+            language=language,
             rate=rate,
             stability=stability,
             similarity=similarity,
@@ -289,6 +332,16 @@ def synthesize_batch(
     help="Voice for the second text (typically L2). Default: provider's default voice.",
 )
 @click.option(
+    "--lang1",
+    default=None,
+    help="ISO 639-1 language for first text (e.g. en).",
+)
+@click.option(
+    "--lang2",
+    default=None,
+    help="ISO 639-1 language for second text (e.g. de).",
+)
+@click.option(
     "--rate",
     default=90,
     show_default=True,
@@ -317,6 +370,8 @@ def synthesize_pair(
     text2: str,
     voice1: str | None,
     voice2: str | None,
+    lang1: str | None,
+    lang2: str | None,
     rate: int,
     pause: int,
     output: Path | None,
@@ -330,14 +385,13 @@ def synthesize_pair(
     Creates [TEXT1 audio] [pause] [TEXT2 audio] in a single MP3.
     """
     provider = _get_provider(ctx)
-    voice1 = voice1 or provider.default_voice
-    voice2 = voice2 or provider.default_voice
-    provider.resolve_voice(voice1)
-    provider.resolve_voice(voice2)
+    voice1, lang1 = _resolve_voice_and_language(provider, voice1, lang1)
+    voice2, lang2 = _resolve_voice_and_language(provider, voice2, lang2)
     boost = speaker_boost if speaker_boost else None
     req1 = SynthesisRequest(
         text=text1,
         voice=voice1,
+        language=lang1,
         rate=rate,
         stability=stability,
         similarity=similarity,
@@ -347,6 +401,7 @@ def synthesize_pair(
     req2 = SynthesisRequest(
         text=text2,
         voice=voice2,
+        language=lang2,
         rate=rate,
         stability=stability,
         similarity=similarity,
@@ -374,6 +429,16 @@ def synthesize_pair(
     "--voice2",
     default=None,
     help="Voice for second texts (typically L2). Default: provider's default voice.",
+)
+@click.option(
+    "--lang1",
+    default=None,
+    help="ISO 639-1 language for first texts (e.g. en).",
+)
+@click.option(
+    "--lang2",
+    default=None,
+    help="ISO 639-1 language for second texts (e.g. de).",
 )
 @click.option(
     "--rate",
@@ -409,6 +474,8 @@ def synthesize_pair_batch(
     ctx: click.Context,
     voice1: str | None,
     voice2: str | None,
+    lang1: str | None,
+    lang2: str | None,
     rate: int,
     pause: int,
     output_dir: Path | None,
@@ -444,10 +511,8 @@ def synthesize_pair_batch(
         if not isinstance(item[0], str) or not isinstance(item[1], str):
             raise click.BadParameter(f"Element {i} must contain strings, got {item!r}.")
 
-    voice1 = voice1 or provider.default_voice
-    voice2 = voice2 or provider.default_voice
-    provider.resolve_voice(voice1)
-    provider.resolve_voice(voice2)
+    voice1, lang1 = _resolve_voice_and_language(provider, voice1, lang1)
+    voice2, lang2 = _resolve_voice_and_language(provider, voice2, lang2)
     raw_pairs = cast("list[list[str]]", raw)
     boost = speaker_boost if speaker_boost else None
     pairs: list[tuple[SynthesisRequest, SynthesisRequest]] = [
@@ -455,6 +520,7 @@ def synthesize_pair_batch(
             SynthesisRequest(
                 text=p[0],
                 voice=voice1,
+                language=lang1,
                 rate=rate,
                 stability=stability,
                 similarity=similarity,
@@ -464,6 +530,7 @@ def synthesize_pair_batch(
             SynthesisRequest(
                 text=p[1],
                 voice=voice2,
+                language=lang2,
                 rate=rate,
                 stability=stability,
                 similarity=similarity,

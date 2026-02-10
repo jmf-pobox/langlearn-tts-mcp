@@ -23,8 +23,87 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["PollyProvider"]
 
+# ISO 639-1 → Polly BCP 47 language code mapping.
+_LANGUAGE_MAP: dict[str, str] = {
+    "ar": "arb",
+    "ca": "ca-ES",
+    "cs": "cs-CZ",
+    "cy": "cy-GB",
+    "da": "da-DK",
+    "de": "de-DE",
+    "en": "en-US",
+    "es": "es-ES",
+    "fi": "fi-FI",
+    "fr": "fr-FR",
+    "hi": "hi-IN",
+    "id": "id-ID",
+    "it": "it-IT",
+    "ja": "ja-JP",
+    "ko": "ko-KR",
+    "ms": "ms-MY",
+    "nb": "nb-NO",
+    "nl": "nl-NL",
+    "pl": "pl-PL",
+    "pt": "pt-BR",
+    "ro": "ro-RO",
+    "ru": "ru-RU",
+    "sv": "sv-SE",
+    "th": "th-TH",
+    "tr": "tr-TR",
+    "uk": "uk-UA",
+    "vi": "vi-VN",
+    "zh": "cmn-CN",
+}
+
+# Reverse map: BCP 47 prefix → ISO 639-1.
+_BCP47_TO_ISO: dict[str, str] = {v: k for k, v in _LANGUAGE_MAP.items()}
+
+# Default voice per language (ISO 639-1 → lowercase Polly voice name).
+_DEFAULT_VOICES: dict[str, str] = {
+    "ar": "zeina",
+    "da": "naja",
+    "de": "vicki",
+    "en": "joanna",
+    "es": "lucia",
+    "fi": "suvi",
+    "fr": "lea",
+    "hi": "aditi",
+    "it": "carla",
+    "ja": "takumi",
+    "ko": "seoyeon",
+    "nl": "lotte",
+    "nb": "liv",
+    "pl": "ewa",
+    "pt": "vitoria",
+    "ro": "carmen",
+    "ru": "tatyana",
+    "sv": "astrid",
+    "tr": "filiz",
+    "zh": "zhiyu",
+}
+
 # Engine preference order: best quality first.
 _ENGINE_PREFERENCE: list[str] = ["neural", "generative", "long-form", "standard"]
+
+
+def _bcp47_matches_iso(bcp47: str, iso: str) -> bool:
+    """Check if a BCP 47 language code corresponds to an ISO 639-1 code."""
+    mapped = _BCP47_TO_ISO.get(bcp47)
+    if mapped == iso:
+        return True
+    prefix = bcp47.split("-")[0]
+    return len(prefix) == 2 and prefix == iso
+
+
+def _infer_iso_from_bcp47(bcp47: str) -> str | None:
+    """Convert a BCP 47 language code to ISO 639-1."""
+    iso = _BCP47_TO_ISO.get(bcp47)
+    if iso:
+        return iso
+    prefix = bcp47.split("-")[0]
+    if len(prefix) == 2:
+        return prefix
+    return None
 
 
 @dataclass(frozen=True)
@@ -152,18 +231,27 @@ class PollyProvider:
             f.write(response["AudioStream"].read())
 
         logger.info("Wrote %s", output_path)
+        language = request.language or _infer_iso_from_bcp47(voice_cfg.language_code)
         return SynthesisResult(
             file_path=output_path,
             text=request.text,
             voice_name=voice_cfg.voice_id,
+            language=language,
         )
 
-    def resolve_voice(self, name: str) -> str:
+    def resolve_voice(self, name: str, language: str | None = None) -> str:
         """Validate and resolve a voice name to its canonical form.
 
         Returns the Polly voice ID (e.g. "Joanna") if the name is valid.
+        If language is provided, validates that the voice supports it.
         """
         cfg = self._resolve_voice_config(name)
+        if language is not None and not _bcp47_matches_iso(cfg.language_code, language):
+            msg = (
+                f"Voice '{cfg.voice_id}' does not support language '{language}' "
+                f"(supports {cfg.language_code})"
+            )
+            raise ValueError(msg)
         return cfg.voice_id
 
     def check_health(self) -> list[HealthCheck]:
@@ -213,6 +301,32 @@ class PollyProvider:
             checks.append(_fail(f"AWS Polly access: {e}"))
 
         return checks
+
+    def get_default_voice(self, language: str) -> str:
+        """Get the default Polly voice for a language."""
+        key = language.lower()
+        voice = _DEFAULT_VOICES.get(key)
+        if voice is None:
+            supported = ", ".join(sorted(_DEFAULT_VOICES))
+            msg = f"No default voice for language '{language}'. Supported: {supported}"
+            raise ValueError(msg)
+        return voice
+
+    def list_voices(self, language: str | None = None) -> list[str]:
+        """List available voices, optionally filtered by language."""
+        _load_voices_from_api(self._client)
+        if language is None:
+            return sorted(VOICES)
+        return sorted(
+            name
+            for name, cfg in VOICES.items()
+            if _bcp47_matches_iso(cfg.language_code, language)
+        )
+
+    def infer_language_from_voice(self, voice: str) -> str | None:
+        """Infer ISO 639-1 language from a Polly voice name."""
+        cfg = self._resolve_voice_config(voice)
+        return _infer_iso_from_bcp47(cfg.language_code)
 
     def _resolve_voice_config(self, name: str) -> VoiceConfig:
         """Resolve a voice name to its full VoiceConfig.

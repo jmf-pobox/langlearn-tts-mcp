@@ -341,3 +341,49 @@ class TestOpenAIProviderCheckHealth:
         assert checks[0].passed
         assert not checks[1].passed
         assert "not found" in checks[1].message
+
+
+class TestOpenAIProviderLanguageSupport:
+    def test_resolve_voice_with_language(self) -> None:
+        provider = OpenAIProvider(client=MagicMock())
+        assert provider.resolve_voice("nova", language="de") == "nova"
+
+    def test_get_default_voice_any_language(self) -> None:
+        provider = OpenAIProvider(client=MagicMock())
+        assert provider.get_default_voice("de") == "nova"
+        assert provider.get_default_voice("ja") == "nova"
+
+    def test_list_voices_ignores_language(self) -> None:
+        provider = OpenAIProvider(client=MagicMock())
+        all_voices = provider.list_voices()
+        filtered = provider.list_voices(language="de")
+        assert all_voices == filtered
+
+    def test_list_voices_sorted(self) -> None:
+        provider = OpenAIProvider(client=MagicMock())
+        voices = provider.list_voices()
+        assert voices == sorted(voices)
+        assert "alloy" in voices
+        assert "nova" in voices
+
+    def test_infer_language_returns_none(self) -> None:
+        provider = OpenAIProvider(client=MagicMock())
+        assert provider.infer_language_from_voice("nova") is None
+
+    def test_synthesize_preserves_language(
+        self,
+        openai_provider: OpenAIProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="Guten Tag", voice="nova", language="de")
+        result = openai_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language == "de"
+
+    def test_synthesize_no_language(
+        self,
+        openai_provider: OpenAIProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="hello", voice="nova")
+        result = openai_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language is None

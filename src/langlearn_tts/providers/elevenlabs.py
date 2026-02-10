@@ -134,10 +134,15 @@ class ElevenLabsProvider:
                 if _VOICE_ID_RE.match(request.voice)
                 else request.voice.lower()
             ),
+            language=request.language,
         )
 
-    def resolve_voice(self, name: str) -> str:
-        """Validate and resolve a voice name to its canonical form."""
+    def resolve_voice(self, name: str, language: str | None = None) -> str:
+        """Validate and resolve a voice name to its canonical form.
+
+        Language is accepted but not validated — ElevenLabs voices are
+        multilingual (70+ languages with eleven_v3).
+        """
         self._resolve_voice_id(name)
         if _VOICE_ID_RE.match(name):
             return name
@@ -189,6 +194,30 @@ class ElevenLabsProvider:
             )
 
         return checks
+
+    def get_default_voice(self, language: str) -> str:
+        """Get the default ElevenLabs voice for a language.
+
+        ElevenLabs voices are multilingual; always returns 'rachel'.
+        """
+        return self.default_voice
+
+    def list_voices(self, language: str | None = None) -> list[str]:
+        """List available voices.
+
+        ElevenLabs voices are multilingual; language filter is accepted
+        but all voices are returned regardless. Only short names (without
+        descriptions) are included.
+        """
+        _load_voices_from_api(self._client)
+        return sorted(k for k in VOICES if " - " not in k)
+
+    def infer_language_from_voice(self, voice: str) -> str | None:
+        """Infer language from a voice name.
+
+        ElevenLabs voices are multilingual; always returns None.
+        """
+        return None
 
     # -- Private helpers --------------------------------------------------
 

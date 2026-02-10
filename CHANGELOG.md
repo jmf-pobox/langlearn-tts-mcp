@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Language-first TTS: language is now a first-class concept across the entire stack
+- `--language`/`--lang` option on CLI `synthesize` and `synthesize-batch` commands
+- `--lang1`/`--lang2` options on CLI `synthesize-pair` and `synthesize-pair-batch` commands
+- `language` parameter on MCP `synthesize` and `synthesize_batch` tools
+- `lang1`/`lang2` parameters on MCP `synthesize_pair` and `synthesize_pair_batch` tools
+- `language` field on `SynthesisRequest` and `SynthesisResult` types
+- `validate_language()` function for ISO 639-1 code validation
+- `SUPPORTED_LANGUAGES` reference dictionary (33 languages)
+- `TTSProvider` protocol extended with `get_default_voice()`, `list_voices()`, `infer_language_from_voice()`
+- Polly: voice-language compatibility validation, language inference from voice, language-filtered voice listing
+- Polly: default voice per language (20 languages)
+- OpenAI/ElevenLabs: language pass-through (multilingual voices)
 - CONTRIBUTING.md with bug reporting, dev setup, quality gates, testing, commit format, and PR workflow
 - PyPI keywords (tts, text-to-speech, mcp, language-learning, elevenlabs, aws-polly, openai) and Repository URL
 - PyPI classifiers: Education audience, Console environment, Education topic; Development Status bumped to Beta
@@ -17,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI synthesize docstring documents ElevenLabs audio tags
 - CLI and MCP `--voice` help shows concrete defaults per provider (rachel/joanna/nova)
 - OpenAI README section expanded with default model, auto-chunking, and per-model pricing
+- Voice is now optional when language is provided — the provider selects a default voice for the language
 
 ### Fixed
 - Polly and OpenAI voice error messages truncated to 10 voices (matching ElevenLabs), down from full list (93 voices for Polly)

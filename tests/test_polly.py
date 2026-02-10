@@ -11,7 +11,9 @@ import pytest
 from langlearn_tts.providers.polly import (
     PollyProvider,
     VoiceConfig,
+    _bcp47_matches_iso,  # pyright: ignore[reportPrivateUsage]
     _best_engine,  # pyright: ignore[reportPrivateUsage]
+    _infer_iso_from_bcp47,  # pyright: ignore[reportPrivateUsage]
 )
 from langlearn_tts.types import SynthesisRequest
 
@@ -247,3 +249,162 @@ class TestPollyProviderCheckHealth:
 
         assert not checks[0].passed
         assert "not configured" in checks[0].message
+
+
+class TestBcp47MatchesIso:
+    def test_standard_match(self) -> None:
+        assert _bcp47_matches_iso("en-US", "en") is True
+
+    def test_standard_no_match(self) -> None:
+        assert _bcp47_matches_iso("de-DE", "en") is False
+
+    def test_arabic_special(self) -> None:
+        assert _bcp47_matches_iso("arb", "ar") is True
+
+    def test_chinese_special(self) -> None:
+        assert _bcp47_matches_iso("cmn-CN", "zh") is True
+
+    def test_unmapped_prefix(self) -> None:
+        assert _bcp47_matches_iso("en-GB", "en") is True
+
+    def test_three_letter_no_match(self) -> None:
+        assert _bcp47_matches_iso("arb", "en") is False
+
+
+class TestInferIsoFromBcp47:
+    def test_mapped_code(self) -> None:
+        assert _infer_iso_from_bcp47("en-US") == "en"
+
+    def test_arabic(self) -> None:
+        assert _infer_iso_from_bcp47("arb") == "ar"
+
+    def test_chinese(self) -> None:
+        assert _infer_iso_from_bcp47("cmn-CN") == "zh"
+
+    def test_unmapped_prefix(self) -> None:
+        assert _infer_iso_from_bcp47("en-GB") == "en"
+
+    def test_unmapped_three_letter(self) -> None:
+        assert _infer_iso_from_bcp47("xyz") is None
+
+
+class TestPollyProviderResolveVoiceWithLanguage:
+    def test_matching_language(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        result = provider.resolve_voice("joanna", language="en")
+        assert result == "Joanna"
+
+    def test_mismatching_language(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        with pytest.raises(ValueError, match="does not support language 'de'"):
+            provider.resolve_voice("joanna", language="de")
+
+    def test_no_language_still_works(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.resolve_voice("hans") == "Hans"
+
+
+class TestPollyProviderGetDefaultVoice:
+    def test_known_language(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.get_default_voice("de") == "vicki"
+
+    def test_english(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.get_default_voice("en") == "joanna"
+
+    def test_unknown_language(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        with pytest.raises(ValueError, match="No default voice"):
+            provider.get_default_voice("xx")
+
+    def test_case_insensitive(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.get_default_voice("DE") == "vicki"
+
+
+class TestPollyProviderListVoices:
+    def test_all_voices(self) -> None:
+        """list_voices(None) returns all cached voices."""
+        provider = PollyProvider(boto_client=MagicMock())
+        voices = provider.list_voices()
+        assert "joanna" in voices
+        assert "hans" in voices
+
+    def test_filter_by_language(self) -> None:
+        """list_voices('en') returns only English voices."""
+        provider = PollyProvider(boto_client=MagicMock())
+        voices = provider.list_voices(language="en")
+        assert "joanna" in voices
+        assert "hans" not in voices
+
+    def test_filter_by_language_german(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        voices = provider.list_voices(language="de")
+        assert "hans" in voices
+        assert "joanna" not in voices
+
+    def test_sorted(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        voices = provider.list_voices()
+        assert voices == sorted(voices)
+
+
+class TestPollyProviderInferLanguage:
+    def test_english_voice(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.infer_language_from_voice("joanna") == "en"
+
+    def test_german_voice(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.infer_language_from_voice("hans") == "de"
+
+    def test_russian_voice(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.infer_language_from_voice("tatyana") == "ru"
+
+    def test_korean_voice(self) -> None:
+        provider = PollyProvider(boto_client=MagicMock())
+        assert provider.infer_language_from_voice("seoyeon") == "ko"
+
+    def test_unknown_voice_raises(self) -> None:
+        import langlearn_tts.providers.polly as polly
+
+        polly.VOICES.clear()
+        polly._voices_loaded = False  # pyright: ignore[reportPrivateUsage]
+
+        mock_client = MagicMock()
+        mock_client.describe_voices.return_value = _make_describe_voices_response([])
+
+        provider = PollyProvider(boto_client=mock_client)
+        with pytest.raises(ValueError, match="Unknown voice"):
+            provider.infer_language_from_voice("nonexistent")
+
+
+class TestPollyProviderSynthesizeLanguage:
+    def test_infers_language_from_voice(
+        self,
+        polly_provider: PollyProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="hello", voice="joanna")
+        result = polly_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language == "en"
+
+    def test_explicit_language_preserved(
+        self,
+        polly_provider: PollyProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="hello", voice="joanna", language="en")
+        result = polly_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language == "en"
+
+    def test_explicit_language_overrides_inference(
+        self,
+        polly_provider: PollyProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="Guten Tag", voice="hans", language="de")
+        result = polly_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language == "de"

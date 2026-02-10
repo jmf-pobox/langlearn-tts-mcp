@@ -75,10 +75,14 @@ class OpenAIProvider:
             file_path=output_path,
             text=request.text,
             voice_name=voice,
+            language=request.language,
         )
 
-    def resolve_voice(self, name: str) -> str:
-        """Validate and resolve a voice name to its canonical form."""
+    def resolve_voice(self, name: str, language: str | None = None) -> str:
+        """Validate and resolve a voice name to its canonical form.
+
+        Language is accepted but not validated — OpenAI voices are multilingual.
+        """
         return self._resolve_voice_name(name)
 
     def check_health(self) -> list[HealthCheck]:
@@ -130,6 +134,28 @@ class OpenAIProvider:
             )
 
         return checks
+
+    def get_default_voice(self, language: str) -> str:
+        """Get the default OpenAI voice for a language.
+
+        OpenAI voices are multilingual; always returns 'nova'.
+        """
+        return self.default_voice
+
+    def list_voices(self, language: str | None = None) -> list[str]:
+        """List available voices.
+
+        OpenAI voices are multilingual; language filter is accepted but
+        all voices are returned regardless.
+        """
+        return sorted(VOICES)
+
+    def infer_language_from_voice(self, voice: str) -> str | None:
+        """Infer language from a voice name.
+
+        OpenAI voices are multilingual; always returns None.
+        """
+        return None
 
     # -- Private helpers --------------------------------------------------
 
