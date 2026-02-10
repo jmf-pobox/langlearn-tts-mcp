@@ -129,7 +129,7 @@ minversion = "8.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
 markers = [
-    "integration: marks tests as integration tests (requires AWS credentials)",
+    "integration: marks tests as integration tests (requires provider API credentials)",
 ]
 
 [tool.coverage.run]
