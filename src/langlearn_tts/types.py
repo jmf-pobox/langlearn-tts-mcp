@@ -173,17 +173,51 @@ class TTSProvider(Protocol):
         """
         ...
 
-    def resolve_voice(self, name: str) -> str:
+    def resolve_voice(self, name: str, language: str | None = None) -> str:
         """Validate and resolve a voice name.
 
         Args:
             name: Case-insensitive voice name.
+            language: Optional ISO 639-1 code for compatibility check.
 
         Returns:
             The canonical voice name.
 
         Raises:
-            ValueError: If the voice name is not valid for this provider.
+            ValueError: If the voice is invalid or incompatible with language.
+        """
+        ...
+
+    def get_default_voice(self, language: str) -> str:
+        """Get the default voice for a language.
+
+        Args:
+            language: ISO 639-1 code (e.g. 'de', 'ko').
+
+        Returns:
+            Voice name suitable for the language.
+
+        Raises:
+            ValueError: If no voice is available for this language.
+        """
+        ...
+
+    def list_voices(self, language: str | None = None) -> list[str]:
+        """List available voices, optionally filtered by language.
+
+        Args:
+            language: ISO 639-1 code to filter by, or None for all.
+
+        Returns:
+            Sorted list of voice names.
+        """
+        ...
+
+    def infer_language_from_voice(self, voice: str) -> str | None:
+        """Infer language from a voice name (best-effort).
+
+        Returns:
+            ISO 639-1 code if inferrable, else None.
         """
         ...
 
