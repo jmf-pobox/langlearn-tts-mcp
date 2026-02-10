@@ -101,9 +101,12 @@ class TestSynthesize:
     def test_synthesize_non_english(
         self, provider: ElevenLabsProvider, voice_name: str, tmp_path: Path
     ) -> None:
-        """German text synthesis."""
+        """German text synthesis with language parameter."""
         request = SynthesisRequest(
-            text="Guten Tag, wie geht es Ihnen?", voice=voice_name, rate=100
+            text="Guten Tag, wie geht es Ihnen?",
+            voice=voice_name,
+            rate=100,
+            language="de",
         )
         out = tmp_path / "german.mp3"
 
@@ -112,6 +115,7 @@ class TestSynthesize:
         assert out.exists()
         assert out.stat().st_size > 0
         assert result.text == "Guten Tag, wie geht es Ihnen?"
+        assert result.language == "de"
 
     def test_synthesize_with_voice_settings(
         self, provider: ElevenLabsProvider, voice_name: str, tmp_path: Path
@@ -132,3 +136,34 @@ class TestSynthesize:
         assert out.exists()
         assert out.stat().st_size > 0
         assert result.voice_name == voice_name
+
+
+class TestLanguageSupport:
+    def test_list_voices_from_api(
+        self, provider: ElevenLabsProvider, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """list_voices() fetches real voices from the API."""
+        import langlearn_tts.providers.elevenlabs as elevenlabs
+
+        monkeypatch.setattr(elevenlabs, "VOICES", {})
+        monkeypatch.setattr(elevenlabs, "_voices_loaded", False)
+
+        voices = provider.list_voices()
+
+        assert len(voices) > 0
+        assert voices == sorted(voices)
+        for v in voices:
+            assert " - " not in v
+
+    def test_list_voices_ignores_language_filter(
+        self, provider: ElevenLabsProvider, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ElevenLabs is multilingual — language filter returns all voices."""
+        import langlearn_tts.providers.elevenlabs as elevenlabs
+
+        monkeypatch.setattr(elevenlabs, "VOICES", {})
+        monkeypatch.setattr(elevenlabs, "_voices_loaded", False)
+
+        all_voices = provider.list_voices()
+        german_voices = provider.list_voices(language="de")
+        assert all_voices == german_voices

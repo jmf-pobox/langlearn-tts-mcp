@@ -63,9 +63,12 @@ class TestSynthesize:
     def test_synthesize_non_english(
         self, provider: OpenAIProvider, tmp_path: Path
     ) -> None:
-        """German text synthesis."""
+        """German text synthesis with language parameter."""
         request = SynthesisRequest(
-            text="Guten Tag, wie geht es Ihnen?", voice="nova", rate=100
+            text="Guten Tag, wie geht es Ihnen?",
+            voice="nova",
+            rate=100,
+            language="de",
         )
         out = tmp_path / "german.mp3"
 
@@ -74,6 +77,7 @@ class TestSynthesize:
         assert out.exists()
         assert out.stat().st_size > 0
         assert result.text == "Guten Tag, wie geht es Ihnen?"
+        assert result.language == "de"
 
     def test_synthesize_with_speed(
         self, provider: OpenAIProvider, tmp_path: Path
