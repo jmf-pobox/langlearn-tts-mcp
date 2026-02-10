@@ -291,3 +291,62 @@ class TestElevenLabsProviderDefaultModel:
     def test_explicit_overrides_env(self) -> None:
         provider = ElevenLabsProvider(model="eleven_v3", client=MagicMock())
         assert provider._model == "eleven_v3"  # pyright: ignore[reportPrivateUsage]
+
+
+class TestElevenLabsProviderLanguageSupport:
+    def test_resolve_voice_with_language(
+        self, elevenlabs_provider: ElevenLabsProvider
+    ) -> None:
+        result = elevenlabs_provider.resolve_voice("rachel", language="de")
+        assert result == "rachel"
+
+    def test_get_default_voice_any_language(
+        self, elevenlabs_provider: ElevenLabsProvider
+    ) -> None:
+        assert elevenlabs_provider.get_default_voice("de") == "rachel"
+        assert elevenlabs_provider.get_default_voice("ja") == "rachel"
+
+    def test_list_voices_returns_short_names(
+        self, elevenlabs_provider: ElevenLabsProvider
+    ) -> None:
+        voices = elevenlabs_provider.list_voices()
+        assert "drew" in voices
+        assert "rachel" in voices
+        for v in voices:
+            assert " - " not in v
+
+    def test_list_voices_ignores_language(
+        self, elevenlabs_provider: ElevenLabsProvider
+    ) -> None:
+        all_voices = elevenlabs_provider.list_voices()
+        filtered = elevenlabs_provider.list_voices(language="de")
+        assert all_voices == filtered
+
+    def test_list_voices_sorted(self, elevenlabs_provider: ElevenLabsProvider) -> None:
+        voices = elevenlabs_provider.list_voices()
+        assert voices == sorted(voices)
+
+    def test_infer_language_returns_none(
+        self, elevenlabs_provider: ElevenLabsProvider
+    ) -> None:
+        assert elevenlabs_provider.infer_language_from_voice("rachel") is None
+
+    def test_synthesize_preserves_language(
+        self,
+        elevenlabs_provider: ElevenLabsProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(
+            text="Guten Tag", voice="rachel", rate=100, language="de"
+        )
+        result = elevenlabs_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language == "de"
+
+    def test_synthesize_no_language(
+        self,
+        elevenlabs_provider: ElevenLabsProvider,
+        tmp_output_dir: Path,
+    ) -> None:
+        request = SynthesisRequest(text="hello", voice="rachel", rate=100)
+        result = elevenlabs_provider.synthesize(request, tmp_output_dir / "test.mp3")
+        assert result.language is None
