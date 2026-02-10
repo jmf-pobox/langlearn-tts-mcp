@@ -15,7 +15,7 @@ from typing import cast
 import click
 
 from langlearn_tts.core import TTSClient
-from langlearn_tts.providers import auto_detect_provider, get_provider
+from langlearn_tts.providers import DEFAULT_VOICES, auto_detect_provider, get_provider
 from langlearn_tts.types import (
     MergeStrategy,
     SynthesisRequest,
@@ -24,6 +24,12 @@ from langlearn_tts.types import (
 )
 
 logger = logging.getLogger(__name__)
+
+_PROVIDER_DISPLAY = {"elevenlabs": "ElevenLabs", "polly": "Polly", "openai": "OpenAI"}
+_VOICE_DEFAULTS = ", ".join(
+    f"{DEFAULT_VOICES[k]} ({_PROVIDER_DISPLAY[k]})"
+    for k in ("elevenlabs", "polly", "openai")
+)
 
 
 def _configure_logging(verbose: bool) -> None:
@@ -117,7 +123,7 @@ def main(
 @click.option(
     "--voice",
     default=None,
-    help="Voice name. Default: rachel (ElevenLabs), joanna (Polly), nova (OpenAI).",
+    help=f"Voice name. Default: {_VOICE_DEFAULTS}.",
 )
 @click.option(
     "--rate",
@@ -176,10 +182,7 @@ def synthesize(
 @click.option(
     "--voice",
     default=None,
-    help=(
-        "Voice name for all texts."
-        " Default: rachel (ElevenLabs), joanna (Polly), nova (OpenAI)."
-    ),
+    help=(f"Voice name for all texts. Default: {_VOICE_DEFAULTS}."),
 )
 @click.option(
     "--rate",
