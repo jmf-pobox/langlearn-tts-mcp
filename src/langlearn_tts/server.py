@@ -10,6 +10,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+from langlearn_tts import __version__
 from langlearn_tts.core import TTSClient
 from langlearn_tts.providers import get_provider
 from langlearn_tts.types import (
@@ -28,6 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("langlearn-tts")
+mcp._mcp_server.version = __version__  # pyright: ignore[reportPrivateUsage]
 
 
 def _validate_voice_settings(

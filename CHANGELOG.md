@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-10
+
+### Fixed
+- MCP server now reports package version (e.g. `0.5.1`) instead of FastMCP library version in `serverInfo`
+
 ## [0.5.0] - 2026-02-10
 
 ### Added
