@@ -223,7 +223,12 @@ def synthesize_batch(
     ["hello", "world", "good morning"]
     """
     provider = _get_provider(ctx)
-    raw = json.loads(input_file.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(input_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            "INPUT_FILE must contain valid JSON (array of strings)."
+        ) from exc
 
     if not isinstance(raw, list):
         raise click.BadParameter("INPUT_FILE must contain a JSON array of strings.")
@@ -408,7 +413,12 @@ def synthesize_pair_batch(
     [["strong", "stark"], ["house", "Haus"]]
     """
     provider = _get_provider(ctx)
-    raw = json.loads(input_file.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(input_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            "INPUT_FILE must contain valid JSON (array of [text1, text2] pairs)."
+        ) from exc
     if not isinstance(raw, list):
         raise click.BadParameter(
             "INPUT_FILE must contain a JSON array of [text1, text2] pairs."
