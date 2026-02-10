@@ -223,9 +223,12 @@ def synthesize_batch(
     ["hello", "world", "good morning"]
     """
     provider = _get_provider(ctx)
-    voice = voice or provider.default_voice
-    provider.resolve_voice(voice)
-    raw = json.loads(input_file.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(input_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            "INPUT_FILE must contain valid JSON (array of strings)."
+        ) from exc
 
     if not isinstance(raw, list):
         raise click.BadParameter("INPUT_FILE must contain a JSON array of strings.")
@@ -236,6 +239,8 @@ def synthesize_batch(
                 f"Element {i} must be a string, got {type(item).__name__}."  # pyright: ignore[reportUnknownArgumentType]
             )
 
+    voice = voice or provider.default_voice
+    provider.resolve_voice(voice)
     texts = cast("list[str]", raw)
     boost = speaker_boost if speaker_boost else None
     requests = [
@@ -408,12 +413,12 @@ def synthesize_pair_batch(
     [["strong", "stark"], ["house", "Haus"]]
     """
     provider = _get_provider(ctx)
-    voice1 = voice1 or provider.default_voice
-    voice2 = voice2 or provider.default_voice
-    provider.resolve_voice(voice1)
-    provider.resolve_voice(voice2)
-
-    raw = json.loads(input_file.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(input_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            "INPUT_FILE must contain valid JSON (array of [text1, text2] pairs)."
+        ) from exc
     if not isinstance(raw, list):
         raise click.BadParameter(
             "INPUT_FILE must contain a JSON array of [text1, text2] pairs."
@@ -427,6 +432,10 @@ def synthesize_pair_batch(
         if not isinstance(item[0], str) or not isinstance(item[1], str):
             raise click.BadParameter(f"Element {i} must contain strings, got {item!r}.")
 
+    voice1 = voice1 or provider.default_voice
+    voice2 = voice2 or provider.default_voice
+    provider.resolve_voice(voice1)
+    provider.resolve_voice(voice2)
     raw_pairs = cast("list[list[str]]", raw)
     boost = speaker_boost if speaker_boost else None
     pairs: list[tuple[SynthesisRequest, SynthesisRequest]] = [
@@ -484,7 +493,7 @@ def _claude_desktop_config_path() -> Path:
 
 
 def _default_output_dir() -> Path:
-    return Path.home() / "Claude-Audio"
+    return Path.home() / "langlearn-audio"
 
 
 @main.command()
@@ -639,7 +648,7 @@ def _build_install_env(provider: str, audio_dir: Path) -> dict[str, str]:
     "--output-dir",
     default=None,
     type=click.Path(path_type=Path),
-    help="Output directory for synthesized audio. Default: ~/Claude-Audio",
+    help="Output directory for synthesized audio. Default: ~/langlearn-audio",
 )
 @click.option(
     "--uvx-path",
