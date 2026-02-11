@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import logging.config
 from pathlib import Path
 
@@ -13,6 +14,11 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 _MAX_BYTES = 5_242_880  # 5 MB
 _BACKUP_COUNT = 5
+
+
+def _log_level_key(name: str) -> int:
+    """Map level name to numeric value for comparison."""
+    return getattr(logging, name, logging.WARNING)
 
 
 def configure_logging(*, stderr_level: str = "WARNING") -> None:
@@ -39,6 +45,7 @@ def configure_logging(*, stderr_level: str = "WARNING") -> None:
                     "filename": str(_LOG_FILE),
                     "maxBytes": _MAX_BYTES,
                     "backupCount": _BACKUP_COUNT,
+                    "encoding": "utf-8",
                     "formatter": "standard",
                     "level": "INFO",
                 },
@@ -50,7 +57,7 @@ def configure_logging(*, stderr_level: str = "WARNING") -> None:
                 },
             },
             "root": {
-                "level": "DEBUG",
+                "level": min(stderr_level, "INFO", key=_log_level_key),
                 "handlers": ["file", "stderr"],
             },
             "loggers": {

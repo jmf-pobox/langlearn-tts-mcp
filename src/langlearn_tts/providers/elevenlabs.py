@@ -289,14 +289,14 @@ class ElevenLabsProvider:
 
         response: Any = self._client.text_to_speech.convert(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
 
-        with open(output_path, "wb") as f:
-            for chunk in response:  # pyright: ignore[reportUnknownVariableType]
-                f.write(chunk)  # pyright: ignore[reportUnknownArgumentType]
         logger.info(
             "API call: provider=elevenlabs, voice=%s, chars=%d",
             voice_id,
             len(text),
         )
+        with open(output_path, "wb") as f:
+            for chunk in response:  # pyright: ignore[reportUnknownVariableType]
+                f.write(chunk)  # pyright: ignore[reportUnknownArgumentType]
 
     def _chunked_synthesize(
         self,
