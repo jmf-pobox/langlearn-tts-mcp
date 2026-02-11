@@ -195,6 +195,11 @@ class OpenAIProvider:
             response_format="mp3",
         )
         output_path.write_bytes(response.content)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        logger.info(
+            "API call: provider=openai, voice=%s, chars=%d",
+            voice,
+            len(text),
+        )
 
     def _chunked_synthesize(
         self,

@@ -292,6 +292,11 @@ class ElevenLabsProvider:
         with open(output_path, "wb") as f:
             for chunk in response:  # pyright: ignore[reportUnknownVariableType]
                 f.write(chunk)  # pyright: ignore[reportUnknownArgumentType]
+        logger.info(
+            "API call: provider=elevenlabs, voice=%s, chars=%d",
+            voice_id,
+            len(text),
+        )
 
     def _chunked_synthesize(
         self,
