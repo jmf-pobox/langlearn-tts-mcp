@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-02-11
+
 ### Changed
 - README: replaced MCP Server Setup with Claude Desktop-focused section — Desktop Extension (.mcpb) as recommended install, CLI and manual config as alternatives
 - README: added log file location and privacy link to Troubleshooting section
