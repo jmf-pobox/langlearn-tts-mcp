@@ -607,8 +607,8 @@ def doctor(ctx: click.Context) -> None:
     else:
         hint = {
             "Darwin": "brew install ffmpeg",
-            "Linux": "apt install ffmpeg",
-            "Windows": "winget install ffmpeg",
+            "Linux": "see https://ffmpeg.org/download.html",
+            "Windows": "winget install --id Gyan.FFmpeg",
         }.get(platform.system(), "see https://ffmpeg.org/download.html")
         _check(_FAIL, f"ffmpeg: not found — {hint}")
 
