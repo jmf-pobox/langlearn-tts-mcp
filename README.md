@@ -55,11 +55,10 @@ Required for audio stitching (pairs, merged batches). Single synthesis works wit
 # macOS (requires Homebrew — install from https://brew.sh if needed)
 brew install ffmpeg
 
-# Ubuntu/Debian
-sudo apt install ffmpeg
+# Linux — see https://ffmpeg.org/download.html for your distro
 
 # Windows
-winget install ffmpeg
+winget install --id Gyan.FFmpeg
 ```
 
 ### 4. Configure a TTS provider
@@ -115,39 +114,25 @@ uv sync --all-extras
 uv run langlearn-tts --help
 ```
 
-## MCP Server Setup
+## Claude Desktop Setup
 
-langlearn-tts is an MCP server that works with any MCP-compatible client. The server command is the same for all clients:
+### Desktop Extension (recommended)
 
-```
-uvx --from langlearn-tts langlearn-tts-server
-```
+Download the `.mcpb` Desktop Extension bundle from the [latest release](https://github.com/jmf-pobox/langlearn-tts-mcp/releases/latest) and double-click to install. Claude Desktop will prompt you to paste your API key and choose an output directory — no manual configuration needed.
 
-Find your `uvx` path with `which uvx`. All paths in MCP config must be absolute.
+The provider is auto-detected from which API key you provide. ElevenLabs and OpenAI keys are entered during install. For AWS Polly, run `aws configure` in a terminal first — no key is needed in the extension config.
 
-### Environment variables
-
-| Env var | Required | Description |
-|---------|----------|-------------|
-| `LANGLEARN_TTS_PROVIDER` | No | `elevenlabs`, `polly` (default when no API key), or `openai` |
-| `ELEVENLABS_API_KEY` | For ElevenLabs | Your API key |
-| `OPENAI_API_KEY` | For OpenAI | Your API key |
-| `LANGLEARN_TTS_OUTPUT_DIR` | No | Output directory (default: `~/langlearn-audio`) |
-| `LANGLEARN_TTS_MODEL` | No | Model name. ElevenLabs: `eleven_v3` (default). OpenAI: `tts-1`, `tts-1-hd` |
-
-For Polly, AWS credentials are read from `~/.aws/credentials`.
-
-### Claude Desktop
-
-**Automatic:**
+### CLI install
 
 ```bash
 langlearn-tts install
 ```
 
-Options: `--provider NAME`, `--output-dir PATH`, `--uvx-path PATH`. Restart Claude Desktop after running.
+Writes to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS). Options: `--provider NAME`, `--output-dir PATH`, `--uvx-path PATH`. Restart Claude Desktop after running.
 
-**Manual** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+### Manual configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -165,45 +150,21 @@ Options: `--provider NAME`, `--output-dir PATH`, `--uvx-path PATH`. Restart Clau
 
 Claude Desktop does not inherit your shell environment. API keys must be literal values (env var references are not supported). Restart after editing.
 
-### Cursor
+### Environment variables
 
-Add to `~/.cursor/mcp.json`:
+| Env var | Required | Description |
+|---------|----------|-------------|
+| `LANGLEARN_TTS_PROVIDER` | No | `elevenlabs`, `polly` (default when no API key), or `openai` |
+| `ELEVENLABS_API_KEY` | For ElevenLabs | Your API key |
+| `OPENAI_API_KEY` | For OpenAI | Your API key |
+| `LANGLEARN_TTS_OUTPUT_DIR` | No | Output directory (default: `~/langlearn-audio`) |
+| `LANGLEARN_TTS_MODEL` | No | Model name. ElevenLabs: `eleven_v3` (default). OpenAI: `tts-1`, `tts-1-hd` |
 
-```json
-{
-  "mcpServers": {
-    "langlearn-tts": {
-      "command": "/absolute/path/to/uvx",
-      "args": ["--from", "langlearn-tts", "langlearn-tts-server"],
-      "env": {
-        "LANGLEARN_TTS_OUTPUT_DIR": "/absolute/path/to/output/directory"
-      }
-    }
-  }
-}
-```
-
-### Windsurf
-
-Add to `~/.windsurf/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "langlearn-tts": {
-      "command": "/absolute/path/to/uvx",
-      "args": ["--from", "langlearn-tts", "langlearn-tts-server"],
-      "env": {
-        "LANGLEARN_TTS_OUTPUT_DIR": "/absolute/path/to/output/directory"
-      }
-    }
-  }
-}
-```
+For Polly, AWS credentials are read from `~/.aws/credentials`.
 
 ### Other MCP clients
 
-Any client that supports MCP over stdio can use langlearn-tts. Configure it as a subprocess with the command and args shown above, passing API keys and settings as environment variables.
+langlearn-tts works with any MCP client that supports stdio transport. Use the server command `uvx --from langlearn-tts langlearn-tts-server` with the environment variables above. Find your `uvx` path with `which uvx` — all paths must be absolute.
 
 ## AI Tutor Prompts
 
@@ -249,7 +210,9 @@ Each prompt creates a tutor persona calibrated to the student's level, based on 
 langlearn-tts doctor
 ```
 
-Checks Python version, active provider, ffmpeg, provider-specific credentials, `uvx`, Claude Desktop config, and output directory. Required checks must pass (exit code 1 on failure); optional checks show `○` markers.
+Checks Python version, active provider, ffmpeg, provider-specific credentials, `uvx`, Claude Desktop config, and output directory. Required checks must pass (exit code 1 on failure); optional checks show `○` markers. Failed checks include actionable fix hints.
+
+Logs are written to `~/.langlearn-tts/logs/langlearn-tts.log` (5 MB rotation, 5 backups). Logs record provider name, voice, and character count per API call — never the text you synthesize. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## Voices
 
