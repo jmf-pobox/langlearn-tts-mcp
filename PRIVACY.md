@@ -4,7 +4,7 @@
 
 ## Data We Collect
 
-None. langlearn-tts does not collect, transmit, or store any user data. All processing happens locally on your machine except for API calls to the TTS provider you configure.
+None. langlearn-tts does not collect or store any user data. It transmits text only to the TTS provider you configure when you initiate synthesis. All other processing happens locally on your machine.
 
 ## Local Logging
 

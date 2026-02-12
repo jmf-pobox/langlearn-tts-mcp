@@ -19,8 +19,13 @@ init_version=$(python3 -c "
 import re
 text = open('src/langlearn_tts/__init__.py').read()
 m = re.search(r'__version__\s*=\s*\"(.+?)\"', text)
-print(m.group(1) if m else 'UNKNOWN')
+print(m.group(1) if m else '')
 ")
+
+if [ -z "$init_version" ]; then
+    echo "ERROR: Could not find __version__ in src/langlearn_tts/__init__.py" >&2
+    exit 1
+fi
 
 if [ "$version" != "$init_version" ]; then
     echo "ERROR: Version mismatch — manifest.json ($version) != __init__.py ($init_version)" >&2
